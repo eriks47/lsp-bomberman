@@ -330,6 +330,76 @@ int recv_winner_payload(int fd, uint8_t* winner_id) {
     return recv_all(fd, winner_id, sizeof(*winner_id));
 }
 
+int send_round_stats(int fd,
+                     uint8_t sender_id,
+                     uint8_t target_id,
+                     const msg_round_stat_t* stats,
+                     uint8_t count) {
+    if (send_header(fd, MSG_ROUND_STATS, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    if (send_all(fd, &count, sizeof(count)) != 0) {
+        return -1;
+    }
+
+    for (uint8_t i = 0; i < count; ++i) {
+        uint8_t payload[7];
+
+        uint16_t net_kills = htons(stats[i].kills);
+        uint16_t net_destroyed = htons(stats[i].destroyed_blocks);
+        uint16_t net_bonuses = htons(stats[i].collected_bonuses);
+
+        payload[0] = stats[i].player_id;
+        memcpy(payload + 1, &net_kills, sizeof(net_kills));
+        memcpy(payload + 3, &net_destroyed, sizeof(net_destroyed));
+        memcpy(payload + 5, &net_bonuses, sizeof(net_bonuses));
+
+        if (send_all(fd, payload, sizeof(payload)) != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+int recv_round_stats_payload(int fd,
+                             msg_round_stat_t* stats,
+                             uint8_t* count,
+                             size_t max_count) {
+    if (recv_all(fd, count, sizeof(*count)) != 0) {
+        return -1;
+    }
+
+    if (*count > max_count) {
+        return -1;
+    }
+
+    for (uint8_t i = 0; i < *count; ++i) {
+        uint8_t payload[7];
+
+        uint16_t net_kills;
+        uint16_t net_destroyed;
+        uint16_t net_bonuses;
+
+        if (recv_all(fd, payload, sizeof(payload)) != 0) {
+            return -1;
+        }
+
+        stats[i].player_id = payload[0];
+
+        memcpy(&net_kills, payload + 1, sizeof(net_kills));
+        memcpy(&net_destroyed, payload + 3, sizeof(net_destroyed));
+        memcpy(&net_bonuses, payload + 5, sizeof(net_bonuses));
+
+        stats[i].kills = ntohs(net_kills);
+        stats[i].destroyed_blocks = ntohs(net_destroyed);
+        stats[i].collected_bonuses = ntohs(net_bonuses);
+    }
+
+    return 0;
+}
+
 int send_bonus_available(int fd,
                          uint8_t sender_id,
                          uint8_t target_id,

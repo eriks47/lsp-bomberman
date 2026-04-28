@@ -52,6 +52,13 @@ typedef struct {
     uint16_t cell;
 } msg_explosion_t;
 
+typedef struct {
+    uint8_t player_id;
+    uint16_t kills;
+    uint16_t destroyed_blocks;
+    uint16_t collected_bonuses;
+} msg_round_stat_t;
+
 int send_all(int fd, const void* data, size_t size);
 int recv_all(int fd, void* data, size_t size);
 
@@ -111,6 +118,17 @@ int recv_death_payload(int fd, uint8_t* player_id);
 
 int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id);
 int recv_winner_payload(int fd, uint8_t* winner_id);
+
+int send_round_stats(int fd,
+                     uint8_t sender_id,
+                     uint8_t target_id,
+                     const msg_round_stat_t* stats,
+                     uint8_t count);
+
+int recv_round_stats_payload(int fd,
+                             msg_round_stat_t* stats,
+                             uint8_t* count,
+                             size_t max_count);
 
 int send_bonus_available(int fd,
                          uint8_t sender_id,

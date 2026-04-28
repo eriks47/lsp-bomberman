@@ -75,18 +75,18 @@ static void init_state(client_state_t* state) {
 
 static void print_help(void) {
     printf("Commands:\n");
-    printf("  /ready  mark yourself ready\n");
-    printf("  /ping   send PING\n");
-    printf("  /quit   leave the game\n");
-    printf("  /sync   request full state sync\n");
-    printf("  /lobby  return to lobby after game end\n");
-    printf("  /bomb   place bomb\n");
+    printf("  /ready   mark yourself ready\n");
+    printf("  /ping    send PING\n");
+    printf("  /quit    leave the game\n");
+    printf("  /sync    request full state sync\n");
+    printf("  /lobby   return to lobby after game end\n");
+    printf("  /bomb    place bomb\n");
     printf("  /players show players\n");
-    printf("  /map    show map\n");
-    printf("  w       move up\n");
-    printf("  s       move down\n");
-    printf("  a       move left\n");
-    printf("  d       move right\n");
+    printf("  /map     show map\n");
+    printf("  w        move up\n");
+    printf("  s        move down\n");
+    printf("  a        move left\n");
+    printf("  d        move right\n");
 }
 
 static bool is_player_start_cell(char cell) {
@@ -617,6 +617,37 @@ static bool handle_server_message(int fd, client_state_t* state) {
             }
 
             print_players(state);
+            break;
+        }
+
+        case MSG_ROUND_STATS: {
+            msg_round_stat_t stats[MAX_PLAYERS];
+            uint8_t count;
+
+            if (recv_round_stats_payload(fd, stats, &count, MAX_PLAYERS) != 0) {
+                printf("Failed to read ROUND_STATS payload\n");
+                return false;
+            }
+
+            printf("\nRound statistics:\n");
+
+            for (uint8_t i = 0; i < count; ++i) {
+                const char* name = "unknown";
+
+                if (stats[i].player_id < MAX_PLAYERS &&
+                    state->players[stats[i].player_id].name[0] != '\0') {
+                    name = state->players[stats[i].player_id].name;
+                }
+
+                printf("  Player %u (%s): kills=%u destroyed_blocks=%u bonuses=%u\n",
+                       stats[i].player_id,
+                       name,
+                       stats[i].kills,
+                       stats[i].destroyed_blocks,
+                       stats[i].collected_bonuses);
+            }
+
+            printf("\n");
             break;
         }
 

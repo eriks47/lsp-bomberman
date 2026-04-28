@@ -8,7 +8,11 @@
 #define TICKS_PER_SECOND 20
 #define MAX_NAME_LEN 15
 
-typedef enum { GAME_LOBBY = 0, GAME_RUNNING = 1, GAME_END = 2 } game_status_t;
+typedef enum {
+    GAME_LOBBY = 0,
+    GAME_RUNNING = 1,
+    GAME_END = 2
+} game_status_t;
 
 typedef enum {
     DIR_UP = 0,
@@ -37,6 +41,7 @@ typedef enum {
     MSG_SET_READY = 10,
     MSG_SET_STATUS = 20,
     MSG_WINNER = 23,
+    MSG_ROUND_STATS = 24,
     MSG_MOVE_ATTEMPT = 30,
     MSG_BOMB_ATTEMPT = 31,
     MSG_MOVED = 40,
@@ -53,7 +58,7 @@ typedef enum {
 
 typedef struct {
     uint8_t id;
-    uint8_t lives;  // 0 nozīme beigts
+    uint8_t lives;
     char name[MAX_NAME_LEN + 1];
     uint16_t row;
     uint16_t col;
@@ -74,16 +79,11 @@ typedef struct {
     uint16_t timer_ticks;
 } bomb_t;
 
-static inline uint16_t make_cell_index(uint16_t row,
-                                       uint16_t col,
-                                       uint16_t cols) {
+static inline uint16_t make_cell_index(uint16_t row, uint16_t col, uint16_t cols) {
     return (uint16_t)(row * cols + col);
 }
 
-static inline void split_cell_index(uint16_t index,
-                                    uint16_t cols,
-                                    uint16_t* row,
-                                    uint16_t* col) {
+static inline void split_cell_index(uint16_t index, uint16_t cols, uint16_t* row, uint16_t* col) {
     *row = (uint16_t)(index / cols);
     *col = (uint16_t)(index % cols);
 }
