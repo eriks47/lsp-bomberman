@@ -129,6 +129,9 @@ typedef struct {
     char connect_error[128];
 } client_t;
 
+Image bg_image;
+Texture2D bg_texture;
+
 /* ── Helpers ─────────────────────────────────────────────────────────────────
  */
 static void notify(client_t* c, const char* msg) {
@@ -535,14 +538,10 @@ static bool btn_pressed(Rectangle r) {
 /* ── Render: connect screen ──────────────────────────────────────────────────
  */
 static void render_connect(client_t* c) {
-    /* dark gradient background */
-    DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COL_BG,
-                           (Color){10, 10, 20, 255});
+    DrawTexture(bg_texture, 0, 0, WHITE);
 
     /* title */
-    draw_centered_text("BOMBERMAN", 80, 64, COL_ACCENT);
-    draw_centered_text("Enter server details to connect", 160, 18,
-                       COL_TEXT_DIM);
+    draw_centered_text("Enter server details to connect", 160, 18, WHITE);
 
     /* form panel */
     int pw = 420, ph = 280;
@@ -1056,6 +1055,10 @@ int main(void) {
     c.port_input.bounds = (Rectangle){lx, fy + gap, fw, fh};
     c.name_input.bounds = (Rectangle){lx, fy + gap * 2, fw, fh};
     c.ip_input.active = true;
+
+    bg_image = LoadImage("assets/title_background.png");
+    ImageResize(&bg_image, SCREEN_WIDTH, SCREEN_HEIGHT);
+    bg_texture = LoadTextureFromImage(bg_image);
 
     while (!WindowShouldClose()) {
         /* ── poll for server messages (non-blocking) ── */
