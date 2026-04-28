@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static void copy_fixed_string(char* dst, size_t dst_size, const char* src) {
+void copy_protocol_string(char* dst, size_t dst_size, const char* src) {
     memset(dst, 0, dst_size);
 
     if (src == NULL) {
@@ -65,8 +65,8 @@ int recv_header(int fd, msg_header_t* header) {
 int send_hello(int fd, const char* client_id, const char* player_name) {
     msg_hello_t hello;
 
-    copy_fixed_string(hello.client_id, sizeof(hello.client_id), client_id);
-    copy_fixed_string(hello.player_name, sizeof(hello.player_name), player_name);
+    copy_protocol_string(hello.client_id, sizeof(hello.client_id), client_id);
+    copy_protocol_string(hello.player_name, sizeof(hello.player_name), player_name);
 
     if (send_header(fd, MSG_HELLO, TARGET_SERVER, TARGET_SERVER) != 0) {
         return -1;
@@ -79,20 +79,49 @@ int recv_hello_payload(int fd, msg_hello_t* hello) {
     return recv_all(fd, hello, sizeof(*hello));
 }
 
-int send_welcome(int fd, uint8_t player_id, uint8_t game_status) {
+int send_welcome(int fd,
+                 uint8_t player_id,
+                 uint8_t game_status,
+                 const protocol_player_info_t* players,
+                 uint8_t player_count) {
     msg_welcome_t welcome;
 
-    copy_fixed_string(welcome.server_id, sizeof(welcome.server_id), "lsp-server-0.1");
+    copy_protocol_string(welcome.server_id, sizeof(welcome.server_id), "lsp-server-0.1");
     welcome.game_status = game_status;
-    welcome.other_players_count = 0;
+    welcome.other_players_count = player_count;
 
     if (send_header(fd, MSG_WELCOME, player_id, player_id) != 0) {
         return -1;
     }
 
-    return send_all(fd, &welcome, sizeof(welcome));
+    if (send_all(fd, &welcome, sizeof(welcome)) != 0) {
+        return -1;
+    }
+
+    if (player_count == 0) {
+        return 0;
+    }
+
+    return send_all(fd, players, sizeof(players[0]) * player_count);
 }
 
-int recv_welcome_payload(int fd, msg_welcome_t* welcome) {
-    return recv_all(fd, welcome, sizeof(*welcome));
+int recv_welcome_payload(int fd,
+                         msg_welcome_t* welcome,
+                         protocol_player_info_t* players,
+                         size_t max_players) {
+    if (recv_all(fd, welcome, sizeof(*welcome)) != 0) {
+        return -1;
+    }
+
+    if (welcome->other_players_count > max_players) {
+        return -1;
+    }
+
+    if (welcome->other_players_count == 0) {
+        return 0;
+    }
+
+    return recv_all(fd,
+                    players,
+                    sizeof(players[0]) * welcome->other_players_count);
 }
