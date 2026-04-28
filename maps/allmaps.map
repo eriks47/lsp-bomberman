@@ -1,0 +1,198 @@
+# Seko laukuma karte. Elementi katrā laukuma šūnā:
+# - H cietais bloks,
+# - S mīkstais bloks,
+# - 1..8 spēlētājs ar attiecīgu numuru,
+# - B bumba,
+# - A spēlētāja pārvietošanās ātruma palielināšana +1, 
+# - R bumbas sprādziena rādiusa palielināšana +1,
+# - T bumbas atskaites laika palielināšana +1,
+# - N bumbu skaita palielināšana + 1.
+
+# Arena simetriskā
+# Simetrisks 4 spēlētāju laukums
+# Katram spēlētājam vienādas iespējas
+# Power-up izvietoti centrāli
+
+8 11 4 5 2 60
+H H H H H H H H H H H
+H 1 . S . . . S . 2 H
+H . H S H . H S H . H
+H S S . . A . . S S H
+H . H . H R H . H . H
+H . . N . . . T . . H
+H . H . H R H . H . H
+H S S . . A . . S S H
+H . H S H . H S H . H
+H 3 . S . . . S . 4 H
+H H H H H H H H H H H
+
+===
+
+# Labirints
+# Sarežģīts labirints ar daudziem mīkstajiem blokiem
+# Divi spēlētāji pretējos stūros
+# Liels sprādziena rādiuss - bīstami!
+
+9 13 5 8 3 45
+H H H H H H H H H H H H H
+H 1 . S S S . S S S . . H
+H S H H . H H H . H H S H
+H . . S . . S . . S . . H
+H H S H H S H S H H S H H
+H . . . . . R . . . . . H
+H H S H H S H S H H S H H
+H . . S . . N . . S . . H
+H S H H . H H H . H H S H
+H . . S S S . S S S . 2 H
+H H H H H H H H H H H H H
+
+===
+
+# Atvērts lauks
+# Minimāli šķēršļi, maksimāla kustība
+# Ātrs spēles temps (ātrums 6)
+# Power-up pārpilnība centrā
+
+7 9 6 4 2 30
+H H H H H H H H H
+H 1 . . . . . 2 H
+H . S . S . S . H
+H . . A R N T . H
+H . S . S . S . H
+H 3 . . . . . 4 H
+H H H H H H H H H
+
+===
+
+# Cietoksnis
+# Blīvs laukums ar daudz cietiem blokiem
+# Ļoti īss sprādziena atskaites laiks!
+# Tikai 2 spēlētāji duelī
+
+9 11 3 6 2 20
+H H H H H H H H H H H
+H 1 . S H . H S . 2 H
+H . H . H S H . H . H
+H S . S . . . S . S H
+H H S H H . H H S H H
+H . . . . A . . . . H
+H H S H H . H H S H H
+H S . S . R . S . S H
+H . H . H S H . H . H
+H . . S H N H S . . H
+H H H H H H H H H H H
+
+===
+
+# Krusts
+# Krustveidīgs koridoru tīkls
+# 6 spēlētāji — haoss garantēts
+# Power-upi krustpunktos
+11 13 4 5 2 50
+H H H H H H H H H H H H H
+H 1 H H . S . S . H H 2 H
+H . H H . . . . . H H . H
+H H H H . S R S . H H H H
+H . . . . . . . . . . . H
+H S . S A . . . A S . S H
+H . . . . . N . . . . . H
+H . . . . . . . . . . . H
+H H H H . S T S . H H H H
+H . H H . . . . . H H . H
+H 3 H H . S . S . H H 4 H
+H H H H H H H H H H H H H
+
+===
+
+# Spirāle
+# Spirālveida sienu struktūra
+# Viens ceļš uz centru — kontrolē centru, kontrolē spēli
+# Lēns spēlētājs, tāpēc taktika svarīgāka par ātrumu
+11 11 3 6 2 55
+H H H H H H H H H H H
+H 1 . . . . . . . 2 H
+H . H H H H H H . . H
+H . H . . . . H . H H
+H . H . H H . H . . H
+H . H . H N . . . H H
+H . H . H H H H . . H
+H . H . . . . . . H H
+H . H H H H H H H . H
+H 3 . . . . . . . 4 H
+H H H H H H H H H H H
+
+===
+
+# Sala
+# Centrālā sala ar power-upiem, pieejama tikai caur mīkstajiem blokiem
+# Sprādziena rādiuss 4 — gandrīz puse laukuma!
+# Īss atskaites laiks — bīstami likt bumbas tuvu sev
+9 13 5 7 4 25
+H H H H H H H H H H H H H
+H 1 . . S . . . S . . 2 H
+H . . S H H H H H S . . H
+H S S H . A . R . H S S H
+H . . H . . N . . H . . H
+H S S H . T . A . H S S H
+H . . S H H H H H S . . H
+H 3 . . S . . . S . . 4 H
+H H H H H H H H H H H H H
+
+===
+
+# Tuneļi
+# Horizontāli un vertikāli tuneļi krustojas
+# Sprādzienu ķēžu reakcijas iespējamas!
+# 8 spēlētāji — lielākā kauja
+13 15 4 5 3 40
+H H H H H H H H H H H H H H H
+H 1 S . S H S H S H S . S 2 H
+H S H H . H . H . H H H . S H
+H . H H . . . . . . H H . . H
+H S H H . H A H A H H H . S H
+H H . . . H . H . H . . . H H
+H S . S . . R . R . . S . S H
+H H . . . H . H . H . . . H H
+H S H H . H N H N H H H . S H
+H . H H . . . . . . H H . . H
+H S H H . H T H T H H H . S H
+H 5 S . S H S H S H S . S 6 H
+H H H H H H H H H H H H H H H
+
+===
+
+# Šahs
+# Šaha galdiņa izkārtojums ar mīkstajiem blokiem
+# Visi spēlētāji vienādā attālumā no centra
+# Daudz power-upu — ātri kļūsti spēcīgs vai mirsti mēģinot
+9 9 5 4 2 45
+H H H H H H H H H
+H 1 . S . S . 2 H
+H . S . S . S . H
+H S . A . R . S H
+H . S . N . S . H
+H S . T . A . S H
+H . S . S . S . H
+H 3 . S . S . 4 H
+H H H H H H H H H
+
+===
+
+# Bunkers
+# Katram spēlētājam savs stūra bunkeris ar izeju
+# Mīkstie bloki aizsargā ieejas
+# Lēna bumba ar garu atskaiti — daudz laika domāt
+11 13 3 8 2 80
+H H H H H H H H H H H H H
+H 1 . H . S . S . H . 2 H
+H . . H . . . . . H . . H
+H H H H S . N . S H H H H
+H . . . . . . . . . . . H
+H S . . . A . A . . . S H
+H . . . . . . . . . . . H
+H S . . . R . R . . . S H
+H . . . . . . . . . . . H
+H H H H S . T . S H H H H
+H . . H . . . . . H . . H
+H 3 . H . S . S . H . 4 H
+H H H H H H H H H H H H H

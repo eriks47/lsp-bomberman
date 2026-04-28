@@ -28,14 +28,9 @@ int map_load_from_file(const char* path, game_map_t* map) {
     unsigned int bomb_radius;
     unsigned int bomb_timer_ticks;
 
-    int header_items = fscanf(file,
-                              "%u %u %u %u %u %u",
-                              &rows,
-                              &cols,
-                              &player_speed,
-                              &explosion_danger_ticks,
-                              &bomb_radius,
-                              &bomb_timer_ticks);
+    int header_items =
+        fscanf(file, "%u %u %u %u %u %u", &rows, &cols, &player_speed,
+               &explosion_danger_ticks, &bomb_radius, &bomb_timer_ticks);
 
     if (header_items != 6) {
         fprintf(stderr, "Invalid map header in %s\n", path);

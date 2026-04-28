@@ -79,10 +79,16 @@ int recv_welcome_payload(int fd,
                          protocol_player_info_t* players,
                          size_t max_players);
 
-int send_status(int fd, uint8_t sender_id, uint8_t target_id, uint8_t game_status);
+int send_status(int fd,
+                uint8_t sender_id,
+                uint8_t target_id,
+                uint8_t game_status);
 int recv_status_payload(int fd, uint8_t* game_status);
 
-int send_map(int fd, uint8_t sender_id, uint8_t target_id, const game_map_t* map);
+int send_map(int fd,
+             uint8_t sender_id,
+             uint8_t target_id,
+             const game_map_t* map);
 int recv_map_payload(int fd, game_map_t* map);
 
 int send_move_attempt(int fd, uint8_t sender_id, uint8_t direction_ascii);
@@ -116,7 +122,10 @@ int recv_explosion_payload(int fd, msg_explosion_t* explosion);
 int send_death(int fd, uint8_t sender_id, uint8_t target_id, uint8_t player_id);
 int recv_death_payload(int fd, uint8_t* player_id);
 
-int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id);
+int send_winner(int fd,
+                uint8_t sender_id,
+                uint8_t target_id,
+                uint8_t winner_id);
 int recv_winner_payload(int fd, uint8_t* winner_id);
 
 int send_round_stats(int fd,
@@ -144,7 +153,10 @@ int send_bonus_retrieved(int fd,
                          uint16_t cell);
 int recv_bonus_retrieved_payload(int fd, uint8_t* player_id, uint16_t* cell);
 
-int send_block_destroyed(int fd, uint8_t sender_id, uint8_t target_id, uint16_t cell);
+int send_block_destroyed(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint16_t cell);
 int recv_block_destroyed_payload(int fd, uint16_t* cell);
 
 void copy_protocol_string(char* dst, size_t dst_size, const char* src);

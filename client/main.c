@@ -98,12 +98,8 @@ static bool is_bonus_cell(char cell) {
 }
 
 static bool is_base_map_cell(char cell) {
-    return cell == '.' ||
-           cell == 'H' ||
-           cell == 'S' ||
-           cell == 'B' ||
-           is_bonus_cell(cell) ||
-           is_player_start_cell(cell);
+    return cell == '.' || cell == 'H' || cell == 'S' || cell == 'B' ||
+           is_bonus_cell(cell) || is_player_start_cell(cell);
 }
 
 static uint16_t map_cell_at(const game_map_t* map, uint16_t row, uint16_t col) {
@@ -153,35 +149,24 @@ static void set_explosion_cells(client_state_t* state,
     uint16_t center_row;
     uint16_t center_col;
 
-    split_cell_index(center_cell,
-                     state->map.cols,
-                     &center_row,
-                     &center_col);
+    split_cell_index(center_cell, state->map.cols, &center_row, &center_col);
 
     state->explosion_cells[center_cell] = value;
 
-    const int directions[4][2] = {
-        {-1, 0},
-        {1, 0},
-        {0, -1},
-        {0, 1}
-    };
+    const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
     for (size_t direction = 0; direction < 4; ++direction) {
         for (uint8_t distance = 1; distance <= radius; ++distance) {
             int row = (int)center_row + directions[direction][0] * distance;
             int col = (int)center_col + directions[direction][1] * distance;
 
-            if (row < 0 ||
-                col < 0 ||
-                row >= state->map.rows ||
+            if (row < 0 || col < 0 || row >= state->map.rows ||
                 col >= state->map.cols) {
                 break;
             }
 
-            uint16_t cell = map_cell_at(&state->map,
-                                        (uint16_t)row,
-                                        (uint16_t)col);
+            uint16_t cell =
+                map_cell_at(&state->map, (uint16_t)row, (uint16_t)col);
 
             state->explosion_cells[cell] = value;
 
@@ -274,14 +259,15 @@ static uint16_t get_my_cell(const client_state_t* state) {
     return state->players[state->my_id].cell;
 }
 
-static void set_player_name(client_state_t* state, uint8_t player_id, const char* name) {
+static void set_player_name(client_state_t* state,
+                            uint8_t player_id,
+                            const char* name) {
     if (player_id >= MAX_PLAYERS) {
         return;
     }
 
     copy_protocol_string(state->players[player_id].name,
-                         sizeof(state->players[player_id].name),
-                         name);
+                         sizeof(state->players[player_id].name), name);
 }
 
 static void print_players(const client_state_t* state) {
@@ -294,12 +280,8 @@ static void print_players(const client_state_t* state) {
             continue;
         }
 
-        printf("  %u: %s ready=%u alive=%u cell=%u",
-               i,
-               player->name,
-               player->ready ? 1 : 0,
-               player->alive ? 1 : 0,
-               player->cell);
+        printf("  %u: %s ready=%u alive=%u cell=%u", i, player->name,
+               player->ready ? 1 : 0, player->alive ? 1 : 0, player->cell);
 
         if (i == state->my_id) {
             printf(" <- you");
@@ -368,11 +350,13 @@ static bool handle_server_message(int fd, client_state_t* state) {
 
             if (header.sender_id < MAX_PLAYERS) {
                 state->players[header.sender_id].active = true;
-                state->players[header.sender_id].alive = state->game_status == GAME_RUNNING;
+                state->players[header.sender_id].alive =
+                    state->game_status == GAME_RUNNING;
                 set_player_name(state, header.sender_id, hello.player_name);
             }
 
-            printf("Player %u joined: %s\n", header.sender_id, hello.player_name);
+            printf("Player %u joined: %s\n", header.sender_id,
+                   hello.player_name);
             print_players(state);
             break;
         }
@@ -469,9 +453,7 @@ static bool handle_server_message(int fd, client_state_t* state) {
                 state->players[moved.player_id].cell = moved.cell;
             }
 
-            printf("Player %u moved to cell %u\n",
-                   moved.player_id,
-                   moved.cell);
+            printf("Player %u moved to cell %u\n", moved.player_id, moved.cell);
 
             render_map(state);
             break;
@@ -487,8 +469,7 @@ static bool handle_server_message(int fd, client_state_t* state) {
 
             mark_bomb_at_cell(state, bomb.cell);
 
-            printf("Player %u placed bomb at cell %u\n",
-                   bomb.owner_id,
+            printf("Player %u placed bomb at cell %u\n", bomb.owner_id,
                    bomb.cell);
 
             render_map(state);
@@ -506,8 +487,7 @@ static bool handle_server_message(int fd, client_state_t* state) {
             remove_bomb_at_cell(state, explosion.cell);
             set_explosion_cells(state, explosion.cell, explosion.radius, true);
 
-            printf("Explosion started at cell %u radius %u\n",
-                   explosion.cell,
+            printf("Explosion started at cell %u radius %u\n", explosion.cell,
                    explosion.radius);
 
             render_map(state);
@@ -524,8 +504,7 @@ static bool handle_server_message(int fd, client_state_t* state) {
 
             set_explosion_cells(state, explosion.cell, explosion.radius, false);
 
-            printf("Explosion ended at cell %u radius %u\n",
-                   explosion.cell,
+            printf("Explosion ended at cell %u radius %u\n", explosion.cell,
                    explosion.radius);
 
             render_map(state);
@@ -559,7 +538,8 @@ static bool handle_server_message(int fd, client_state_t* state) {
             }
 
             if (state->has_map && cell < map_cell_count(&state->map)) {
-                state->map.cells[cell] = (uint8_t)bonus_cell_from_type(bonus_type);
+                state->map.cells[cell] =
+                    (uint8_t)bonus_cell_from_type(bonus_type);
             }
 
             printf("Bonus available at cell %u type %u\n", cell, bonus_type);
@@ -639,12 +619,11 @@ static bool handle_server_message(int fd, client_state_t* state) {
                     name = state->players[stats[i].player_id].name;
                 }
 
-                printf("  Player %u (%s): kills=%u destroyed_blocks=%u bonuses=%u\n",
-                       stats[i].player_id,
-                       name,
-                       stats[i].kills,
-                       stats[i].destroyed_blocks,
-                       stats[i].collected_bonuses);
+                printf(
+                    "  Player %u (%s): kills=%u destroyed_blocks=%u "
+                    "bonuses=%u\n",
+                    stats[i].player_id, name, stats[i].kills,
+                    stats[i].destroyed_blocks, stats[i].collected_bonuses);
             }
 
             printf("\n");
@@ -675,7 +654,9 @@ static bool handle_server_message(int fd, client_state_t* state) {
     return true;
 }
 
-static bool send_move_command(int fd, client_state_t* state, uint8_t direction_ascii) {
+static bool send_move_command(int fd,
+                              client_state_t* state,
+                              uint8_t direction_ascii) {
     if (state->game_status != GAME_RUNNING) {
         printf("Game is not running yet\n");
         return true;
@@ -718,7 +699,8 @@ static bool handle_user_input(int fd, client_state_t* state) {
         send_header(fd, MSG_LEAVE, state->my_id, TARGET_SERVER);
         return false;
     } else if (strcmp(line, "/sync") == 0) {
-        if (send_header(fd, MSG_SYNC_REQUEST, state->my_id, TARGET_SERVER) != 0) {
+        if (send_header(fd, MSG_SYNC_REQUEST, state->my_id, TARGET_SERVER) !=
+            0) {
             return false;
         }
 
@@ -797,7 +779,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (header.msg_type != MSG_WELCOME) {
-        fprintf(stderr, "Expected WELCOME, got message type %u\n", header.msg_type);
+        fprintf(stderr, "Expected WELCOME, got message type %u\n",
+                header.msg_type);
         close(fd);
         return 1;
     }
@@ -805,7 +788,8 @@ int main(int argc, char* argv[]) {
     protocol_player_info_t existing_players[MAX_PLAYERS];
     msg_welcome_t welcome;
 
-    if (recv_welcome_payload(fd, &welcome, existing_players, MAX_PLAYERS) != 0) {
+    if (recv_welcome_payload(fd, &welcome, existing_players, MAX_PLAYERS) !=
+        0) {
         fprintf(stderr, "Failed to read WELCOME payload\n");
         close(fd);
         return 1;
@@ -828,11 +812,10 @@ int main(int argc, char* argv[]) {
 
         if (player_id < MAX_PLAYERS) {
             state.players[player_id].active = true;
-            state.players[player_id].alive = welcome.game_status == GAME_RUNNING;
+            state.players[player_id].alive =
+                welcome.game_status == GAME_RUNNING;
             state.players[player_id].ready = existing_players[i].ready != 0;
-            set_player_name(&state,
-                            player_id,
-                            existing_players[i].player_name);
+            set_player_name(&state, player_id, existing_players[i].player_name);
         }
     }
 
@@ -844,10 +827,8 @@ int main(int argc, char* argv[]) {
         printf("Players already in lobby:\n");
 
         for (uint8_t i = 0; i < welcome.other_players_count; ++i) {
-            printf("  %u: %s ready=%u\n",
-                   existing_players[i].id,
-                   existing_players[i].player_name,
-                   existing_players[i].ready);
+            printf("  %u: %s ready=%u\n", existing_players[i].id,
+                   existing_players[i].player_name, existing_players[i].ready);
         }
     }
 

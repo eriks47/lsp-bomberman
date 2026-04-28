@@ -49,7 +49,10 @@ int recv_all(int fd, void* data, size_t size) {
     return 0;
 }
 
-int send_header(int fd, uint8_t msg_type, uint8_t sender_id, uint8_t target_id) {
+int send_header(int fd,
+                uint8_t msg_type,
+                uint8_t sender_id,
+                uint8_t target_id) {
     msg_header_t header;
 
     header.msg_type = msg_type;
@@ -67,7 +70,8 @@ int send_hello(int fd, const char* client_id, const char* player_name) {
     msg_hello_t hello;
 
     copy_protocol_string(hello.client_id, sizeof(hello.client_id), client_id);
-    copy_protocol_string(hello.player_name, sizeof(hello.player_name), player_name);
+    copy_protocol_string(hello.player_name, sizeof(hello.player_name),
+                         player_name);
 
     if (send_header(fd, MSG_HELLO, TARGET_SERVER, TARGET_SERVER) != 0) {
         return -1;
@@ -87,7 +91,8 @@ int send_welcome(int fd,
                  uint8_t player_count) {
     msg_welcome_t welcome;
 
-    copy_protocol_string(welcome.server_id, sizeof(welcome.server_id), "lsp-server-0.1");
+    copy_protocol_string(welcome.server_id, sizeof(welcome.server_id),
+                         "lsp-server-0.1");
     welcome.game_status = game_status;
     welcome.other_players_count = player_count;
 
@@ -122,10 +127,14 @@ int recv_welcome_payload(int fd,
         return 0;
     }
 
-    return recv_all(fd, players, sizeof(players[0]) * welcome->other_players_count);
+    return recv_all(fd, players,
+                    sizeof(players[0]) * welcome->other_players_count);
 }
 
-int send_status(int fd, uint8_t sender_id, uint8_t target_id, uint8_t game_status) {
+int send_status(int fd,
+                uint8_t sender_id,
+                uint8_t target_id,
+                uint8_t game_status) {
     if (send_header(fd, MSG_SET_STATUS, sender_id, target_id) != 0) {
         return -1;
     }
@@ -137,7 +146,10 @@ int recv_status_payload(int fd, uint8_t* game_status) {
     return recv_all(fd, game_status, sizeof(*game_status));
 }
 
-int send_map(int fd, uint8_t sender_id, uint8_t target_id, const game_map_t* map) {
+int send_map(int fd,
+             uint8_t sender_id,
+             uint8_t target_id,
+             const game_map_t* map) {
     uint8_t size_payload[2];
 
     size_payload[0] = map->rows;
@@ -306,7 +318,10 @@ int recv_explosion_payload(int fd, msg_explosion_t* explosion) {
     return 0;
 }
 
-int send_death(int fd, uint8_t sender_id, uint8_t target_id, uint8_t player_id) {
+int send_death(int fd,
+               uint8_t sender_id,
+               uint8_t target_id,
+               uint8_t player_id) {
     if (send_header(fd, MSG_DEATH, sender_id, target_id) != 0) {
         return -1;
     }
@@ -318,7 +333,10 @@ int recv_death_payload(int fd, uint8_t* player_id) {
     return recv_all(fd, player_id, sizeof(*player_id));
 }
 
-int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id) {
+int send_winner(int fd,
+                uint8_t sender_id,
+                uint8_t target_id,
+                uint8_t winner_id) {
     if (send_header(fd, MSG_WINNER, sender_id, target_id) != 0) {
         return -1;
     }
@@ -466,7 +484,10 @@ int recv_bonus_retrieved_payload(int fd, uint8_t* player_id, uint16_t* cell) {
     return 0;
 }
 
-int send_block_destroyed(int fd, uint8_t sender_id, uint8_t target_id, uint16_t cell) {
+int send_block_destroyed(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint16_t cell) {
     uint16_t net_cell = htons(cell);
 
     if (send_header(fd, MSG_BLOCK_DESTROYED, sender_id, target_id) != 0) {

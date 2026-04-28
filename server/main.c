@@ -74,7 +74,8 @@ static int create_server_socket(uint16_t port) {
 
     int opt = 1;
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
+        0) {
         perror("setsockopt");
         close(server_fd);
         return -1;
@@ -141,7 +142,10 @@ static char map_get_cell(const game_map_t* map, uint16_t row, uint16_t col) {
     return (char)map->cells[cell_index(map, row, col)];
 }
 
-static void map_set_cell(game_map_t* map, uint16_t row, uint16_t col, char value) {
+static void map_set_cell(game_map_t* map,
+                         uint16_t row,
+                         uint16_t col,
+                         char value) {
     map->cells[cell_index(map, row, col)] = (uint8_t)value;
 }
 
@@ -193,22 +197,26 @@ static void broadcast_hello(const client_t clients[MAX_PLAYERS],
                             int except_fd) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active && clients[i].fd != except_fd) {
-            if (send_header(clients[i].fd, MSG_HELLO, sender_id, TARGET_BROADCAST) == 0) {
+            if (send_header(clients[i].fd, MSG_HELLO, sender_id,
+                            TARGET_BROADCAST) == 0) {
                 send_all(clients[i].fd, hello, sizeof(*hello));
             }
         }
     }
 }
 
-static void broadcast_status(const client_t clients[MAX_PLAYERS], uint8_t game_status) {
+static void broadcast_status(const client_t clients[MAX_PLAYERS],
+                             uint8_t game_status) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_status(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, game_status);
+            send_status(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                        game_status);
         }
     }
 }
 
-static void broadcast_map(const client_t clients[MAX_PLAYERS], const game_map_t* map) {
+static void broadcast_map(const client_t clients[MAX_PLAYERS],
+                          const game_map_t* map) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
             send_map(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, map);
@@ -221,7 +229,8 @@ static void broadcast_moved(const client_t clients[MAX_PLAYERS],
                             uint16_t cell) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_moved(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, player_id, cell);
+            send_moved(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                       player_id, cell);
         }
     }
 }
@@ -231,7 +240,8 @@ static void broadcast_bomb(const client_t clients[MAX_PLAYERS],
                            uint16_t cell) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_bomb(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, owner_id, cell);
+            send_bomb(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, owner_id,
+                      cell);
         }
     }
 }
@@ -242,28 +252,28 @@ static void broadcast_explosion(const client_t clients[MAX_PLAYERS],
                                 uint16_t cell) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_explosion(clients[i].fd,
-                           msg_type,
-                           TARGET_SERVER,
-                           TARGET_BROADCAST,
-                           radius,
-                           cell);
+            send_explosion(clients[i].fd, msg_type, TARGET_SERVER,
+                           TARGET_BROADCAST, radius, cell);
         }
     }
 }
 
-static void broadcast_death(const client_t clients[MAX_PLAYERS], uint8_t player_id) {
+static void broadcast_death(const client_t clients[MAX_PLAYERS],
+                            uint8_t player_id) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_death(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, player_id);
+            send_death(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                       player_id);
         }
     }
 }
 
-static void broadcast_winner(const client_t clients[MAX_PLAYERS], uint8_t winner_id) {
+static void broadcast_winner(const client_t clients[MAX_PLAYERS],
+                             uint8_t winner_id) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_winner(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, winner_id);
+            send_winner(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                        winner_id);
         }
     }
 }
@@ -285,11 +295,8 @@ static void broadcast_round_stats(const client_t clients[MAX_PLAYERS],
 
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_round_stats(clients[i].fd,
-                             TARGET_SERVER,
-                             TARGET_BROADCAST,
-                             stats,
-                             count);
+            send_round_stats(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                             stats, count);
         }
     }
 }
@@ -299,19 +306,18 @@ static void broadcast_bonus_retrieved(const client_t clients[MAX_PLAYERS],
                                       uint16_t cell) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_bonus_retrieved(clients[i].fd,
-                                 TARGET_SERVER,
-                                 TARGET_BROADCAST,
-                                 player_id,
-                                 cell);
+            send_bonus_retrieved(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                                 player_id, cell);
         }
     }
 }
 
-static void broadcast_block_destroyed(const client_t clients[MAX_PLAYERS], uint16_t cell) {
+static void broadcast_block_destroyed(const client_t clients[MAX_PLAYERS],
+                                      uint16_t cell) {
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         if (clients[i].active) {
-            send_block_destroyed(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST, cell);
+            send_block_destroyed(clients[i].fd, TARGET_SERVER, TARGET_BROADCAST,
+                                 cell);
         }
     }
 }
@@ -343,11 +349,8 @@ static void send_available_bonuses_to_client(int fd, const game_map_t* map) {
         uint8_t bonus_type = bonus_type_from_cell((char)map->cells[i]);
 
         if (bonus_type != BONUS_NONE) {
-            send_bonus_available(fd,
-                                 TARGET_SERVER,
-                                 TARGET_BROADCAST,
-                                 bonus_type,
-                                 (uint16_t)i);
+            send_bonus_available(fd, TARGET_SERVER, TARGET_BROADCAST,
+                                 bonus_type, (uint16_t)i);
         }
     }
 }
@@ -374,8 +377,7 @@ static void send_sync_to_client(int fd,
         }
 
         if (game->players[i].active && game->players[i].alive) {
-            uint16_t cell = cell_index(&game->map,
-                                       game->players[i].row,
+            uint16_t cell = cell_index(&game->map, game->players[i].row,
                                        game->players[i].col);
 
             send_moved(fd, TARGET_SERVER, TARGET_BROADCAST, i, cell);
@@ -386,11 +388,11 @@ static void send_sync_to_client(int fd,
 
     for (size_t i = 0; i < MAX_BOMBS; ++i) {
         if (game->bombs[i].active) {
-            uint16_t cell = cell_index(&game->map,
-                                       game->bombs[i].row,
-                                       game->bombs[i].col);
+            uint16_t cell =
+                cell_index(&game->map, game->bombs[i].row, game->bombs[i].col);
 
-            send_bomb(fd, TARGET_SERVER, TARGET_BROADCAST, game->bombs[i].owner_id, cell);
+            send_bomb(fd, TARGET_SERVER, TARGET_BROADCAST,
+                      game->bombs[i].owner_id, cell);
         }
     }
 
@@ -431,8 +433,7 @@ static void accept_new_client(int server_fd,
     struct sockaddr_in client_address;
     socklen_t client_address_size = sizeof(client_address);
 
-    int client_fd = accept(server_fd,
-                           (struct sockaddr*)&client_address,
+    int client_fd = accept(server_fd, (struct sockaddr*)&client_address,
                            &client_address_size);
 
     if (client_fd < 0) {
@@ -468,11 +469,8 @@ static void accept_new_client(int server_fd,
     protocol_player_info_t existing_players[MAX_PLAYERS];
     uint8_t existing_count = build_player_list(clients, existing_players);
 
-    if (send_welcome(client_fd,
-                     (uint8_t)free_id,
-                     game->status,
-                     existing_players,
-                     existing_count) != 0) {
+    if (send_welcome(client_fd, (uint8_t)free_id, game->status,
+                     existing_players, existing_count) != 0) {
         fprintf(stderr, "Failed to send WELCOME\n");
         close(client_fd);
         return;
@@ -482,8 +480,7 @@ static void accept_new_client(int server_fd,
     clients[free_id].active = true;
     clients[free_id].ready = false;
     clients[free_id].id = (uint8_t)free_id;
-    copy_protocol_string(clients[free_id].name,
-                         sizeof(clients[free_id].name),
+    copy_protocol_string(clients[free_id].name, sizeof(clients[free_id].name),
                          hello.player_name);
 
     printf("Player %d connected: %s\n", free_id, clients[free_id].name);
@@ -494,10 +491,11 @@ static void accept_new_client(int server_fd,
     }
 }
 
-static bool bomb_exists_at(const game_state_t* game, uint16_t row, uint16_t col) {
+static bool bomb_exists_at(const game_state_t* game,
+                           uint16_t row,
+                           uint16_t col) {
     for (size_t i = 0; i < MAX_BOMBS; ++i) {
-        if (game->bombs[i].active &&
-            game->bombs[i].row == row &&
+        if (game->bombs[i].active && game->bombs[i].row == row &&
             game->bombs[i].col == col) {
             return true;
         }
@@ -515,10 +513,8 @@ static bool player_exists_at(const game_state_t* game,
             continue;
         }
 
-        if (game->players[i].active &&
-            game->players[i].alive &&
-            game->players[i].row == row &&
-            game->players[i].col == col) {
+        if (game->players[i].active && game->players[i].alive &&
+            game->players[i].row == row && game->players[i].col == col) {
             return true;
         }
     }
@@ -531,16 +527,9 @@ static bool is_bonus_cell(char cell) {
 }
 
 static bool is_walkable_cell(char cell) {
-    return cell == '.' ||
-           cell == '1' ||
-           cell == '2' ||
-           cell == '3' ||
-           cell == '4' ||
-           cell == '5' ||
-           cell == '6' ||
-           cell == '7' ||
-           cell == '8' ||
-           is_bonus_cell(cell);
+    return cell == '.' || cell == '1' || cell == '2' || cell == '3' ||
+           cell == '4' || cell == '5' || cell == '6' || cell == '7' ||
+           cell == '8' || is_bonus_cell(cell);
 }
 
 static void apply_bonus(game_state_t* game,
@@ -622,15 +611,11 @@ static void start_game(game_state_t* game, client_t clients[MAX_PLAYERS]) {
         game->players[i].collected_bonuses = 0;
 
         if (clients[i].active) {
-            find_or_create_start_position(game,
-                                          i,
-                                          &game->players[i].row,
+            find_or_create_start_position(game, i, &game->players[i].row,
                                           &game->players[i].col);
 
-            printf("Player %u starts at row=%u col=%u\n",
-                   i,
-                   game->players[i].row,
-                   game->players[i].col);
+            printf("Player %u starts at row=%u col=%u\n", i,
+                   game->players[i].row, game->players[i].col);
         }
     }
 
@@ -641,7 +626,8 @@ static void start_game(game_state_t* game, client_t clients[MAX_PLAYERS]) {
     broadcast_available_bonuses(clients, &game->map);
 }
 
-static size_t active_bombs_by_owner(const game_state_t* game, uint8_t owner_id) {
+static size_t active_bombs_by_owner(const game_state_t* game,
+                                    uint8_t owner_id) {
     size_t count = 0;
 
     for (size_t i = 0; i < MAX_BOMBS; ++i) {
@@ -753,11 +739,13 @@ static void move_player(game_state_t* game,
         return;
     }
 
-    char target_cell = map_get_cell(&game->map, (uint16_t)new_row, (uint16_t)new_col);
+    char target_cell =
+        map_get_cell(&game->map, (uint16_t)new_row, (uint16_t)new_col);
 
     if (!is_walkable_cell(target_cell) ||
         bomb_exists_at(game, (uint16_t)new_row, (uint16_t)new_col) ||
-        player_exists_at(game, (uint16_t)new_row, (uint16_t)new_col, player_id)) {
+        player_exists_at(game, (uint16_t)new_row, (uint16_t)new_col,
+                         player_id)) {
         send_header(clients[player_id].fd, MSG_ERROR, TARGET_SERVER, player_id);
         return;
     }
@@ -781,14 +769,11 @@ static void kill_players_at_cell(game_state_t* game,
     for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
         server_player_t* player = &game->players[i];
 
-        if (player->active &&
-            player->alive &&
-            player->row == row &&
+        if (player->active && player->alive && player->row == row &&
             player->col == col) {
             player->alive = false;
 
-            if (killer_id < MAX_PLAYERS &&
-                killer_id != i &&
+            if (killer_id < MAX_PLAYERS && killer_id != i &&
                 game->players[killer_id].active) {
                 game->players[killer_id].kills += 1;
             }
@@ -801,8 +786,7 @@ static void kill_players_at_cell(game_state_t* game,
 
 static void trigger_bomb_at(game_state_t* game, uint16_t row, uint16_t col) {
     for (size_t i = 0; i < MAX_BOMBS; ++i) {
-        if (game->bombs[i].active &&
-            game->bombs[i].row == row &&
+        if (game->bombs[i].active && game->bombs[i].row == row &&
             game->bombs[i].col == col) {
             game->bombs[i].timer_ticks = 0;
         }
@@ -831,7 +815,8 @@ static void damage_cell(game_state_t* game,
     if (cell == 'S') {
         map_set_cell(&game->map, row, col, '.');
 
-        if (bomb_owner_id < MAX_PLAYERS && game->players[bomb_owner_id].active) {
+        if (bomb_owner_id < MAX_PLAYERS &&
+            game->players[bomb_owner_id].active) {
             game->players[bomb_owner_id].destroyed_blocks += 1;
         }
 
@@ -848,7 +833,8 @@ static void create_explosion(game_state_t* game,
                              const active_bomb_t* bomb) {
     uint16_t center_cell = cell_index(&game->map, bomb->row, bomb->col);
 
-    broadcast_explosion(clients, MSG_EXPLOSION_START, bomb->radius, center_cell);
+    broadcast_explosion(clients, MSG_EXPLOSION_START, bomb->radius,
+                        center_cell);
 
     int explosion_slot = find_free_explosion_slot(game);
 
@@ -857,17 +843,13 @@ static void create_explosion(game_state_t* game,
         game->explosions[explosion_slot].row = bomb->row;
         game->explosions[explosion_slot].col = bomb->col;
         game->explosions[explosion_slot].radius = bomb->radius;
-        game->explosions[explosion_slot].timer_ticks = game->map.explosion_danger_ticks;
+        game->explosions[explosion_slot].timer_ticks =
+            game->map.explosion_danger_ticks;
     }
 
     kill_players_at_cell(game, clients, bomb->row, bomb->col, bomb->owner_id);
 
-    const int directions[4][2] = {
-        {-1, 0},
-        {1, 0},
-        {0, -1},
-        {0, 1}
-    };
+    const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
     for (size_t direction = 0; direction < 4; ++direction) {
         for (uint8_t distance = 1; distance <= bomb->radius; ++distance) {
@@ -880,12 +862,8 @@ static void create_explosion(game_state_t* game,
 
             bool stop_ray = false;
 
-            damage_cell(game,
-                        clients,
-                        (uint16_t)row,
-                        (uint16_t)col,
-                        bomb->owner_id,
-                        &stop_ray);
+            damage_cell(game, clients, (uint16_t)row, (uint16_t)col,
+                        bomb->owner_id, &stop_ray);
 
             if (stop_ray) {
                 break;
@@ -897,9 +875,11 @@ static void create_explosion(game_state_t* game,
 static void finish_explosion(game_state_t* game,
                              const client_t clients[MAX_PLAYERS],
                              active_explosion_t* explosion) {
-    uint16_t center_cell = cell_index(&game->map, explosion->row, explosion->col);
+    uint16_t center_cell =
+        cell_index(&game->map, explosion->row, explosion->col);
 
-    broadcast_explosion(clients, MSG_EXPLOSION_END, explosion->radius, center_cell);
+    broadcast_explosion(clients, MSG_EXPLOSION_END, explosion->radius,
+                        center_cell);
 
     explosion->active = false;
 }
@@ -927,7 +907,8 @@ static void finish_game(game_state_t* game,
     broadcast_round_stats(clients, game);
 }
 
-static void check_winner(game_state_t* game, const client_t clients[MAX_PLAYERS]) {
+static void check_winner(game_state_t* game,
+                         const client_t clients[MAX_PLAYERS]) {
     if (game->status != GAME_RUNNING) {
         return;
     }
@@ -949,7 +930,8 @@ static void check_winner(game_state_t* game, const client_t clients[MAX_PLAYERS]
     }
 }
 
-static void update_game(game_state_t* game, const client_t clients[MAX_PLAYERS]) {
+static void update_game(game_state_t* game,
+                        const client_t clients[MAX_PLAYERS]) {
     if (game->status != GAME_RUNNING) {
         return;
     }
@@ -976,7 +958,8 @@ static void update_game(game_state_t* game, const client_t clients[MAX_PLAYERS])
             active_bomb_t exploded_bomb = game->bombs[i];
             game->bombs[i].active = false;
 
-            printf("Bomb exploded at row=%u col=%u\n", exploded_bomb.row, exploded_bomb.col);
+            printf("Bomb exploded at row=%u col=%u\n", exploded_bomb.row,
+                   exploded_bomb.col);
             create_explosion(game, clients, &exploded_bomb);
         }
     }
@@ -1063,7 +1046,8 @@ static void handle_client_message(client_t clients[MAX_PLAYERS],
         case MSG_MOVE_ATTEMPT: {
             uint8_t direction_ascii;
 
-            if (recv_move_attempt_payload(clients[id].fd, &direction_ascii) != 0) {
+            if (recv_move_attempt_payload(clients[id].fd, &direction_ascii) !=
+                0) {
                 disconnect_client(clients, id);
                 break;
             }
@@ -1075,7 +1059,8 @@ static void handle_client_message(client_t clients[MAX_PLAYERS],
         case MSG_BOMB_ATTEMPT: {
             uint16_t requested_cell;
 
-            if (recv_bomb_attempt_payload(clients[id].fd, &requested_cell) != 0) {
+            if (recv_bomb_attempt_payload(clients[id].fd, &requested_cell) !=
+                0) {
                 disconnect_client(clients, id);
                 break;
             }
@@ -1109,7 +1094,8 @@ static void handle_client_message(client_t clients[MAX_PLAYERS],
             break;
 
         default:
-            fprintf(stderr, "Unknown message type %u from player %u\n", header.msg_type, id);
+            fprintf(stderr, "Unknown message type %u from player %u\n",
+                    header.msg_type, id);
             send_header(clients[id].fd, MSG_ERROR, TARGET_SERVER, id);
             break;
     }
