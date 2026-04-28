@@ -1,7 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <inttypes.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_PLAYERS 8
 #define TICKS_PER_SECOND 20

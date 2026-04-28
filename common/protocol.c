@@ -1,0 +1,98 @@
+#include "protocol.h"
+
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+static void copy_fixed_string(char* dst, size_t dst_size, const char* src) {
+    memset(dst, 0, dst_size);
+
+    if (src == NULL) {
+        return;
+    }
+
+    strncpy(dst, src, dst_size - 1);
+}
+
+int send_all(int fd, const void* data, size_t size) {
+    const uint8_t* ptr = data;
+    size_t sent = 0;
+
+    while (sent < size) {
+        ssize_t result = send(fd, ptr + sent, size - sent, 0);
+
+        if (result <= 0) {
+            return -1;
+        }
+
+        sent += (size_t)result;
+    }
+
+    return 0;
+}
+
+int recv_all(int fd, void* data, size_t size) {
+    uint8_t* ptr = data;
+    size_t received = 0;
+
+    while (received < size) {
+        ssize_t result = recv(fd, ptr + received, size - received, 0);
+
+        if (result <= 0) {
+            return -1;
+        }
+
+        received += (size_t)result;
+    }
+
+    return 0;
+}
+
+int send_header(int fd, uint8_t msg_type, uint8_t sender_id, uint8_t target_id) {
+    msg_header_t header;
+
+    header.msg_type = msg_type;
+    header.sender_id = sender_id;
+    header.target_id = target_id;
+
+    return send_all(fd, &header, sizeof(header));
+}
+
+int recv_header(int fd, msg_header_t* header) {
+    return recv_all(fd, header, sizeof(*header));
+}
+
+int send_hello(int fd, const char* client_id, const char* player_name) {
+    msg_hello_t hello;
+
+    copy_fixed_string(hello.client_id, sizeof(hello.client_id), client_id);
+    copy_fixed_string(hello.player_name, sizeof(hello.player_name), player_name);
+
+    if (send_header(fd, MSG_HELLO, TARGET_SERVER, TARGET_SERVER) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &hello, sizeof(hello));
+}
+
+int recv_hello_payload(int fd, msg_hello_t* hello) {
+    return recv_all(fd, hello, sizeof(*hello));
+}
+
+int send_welcome(int fd, uint8_t player_id, uint8_t game_status) {
+    msg_welcome_t welcome;
+
+    copy_fixed_string(welcome.server_id, sizeof(welcome.server_id), "lsp-server-0.1");
+    welcome.game_status = game_status;
+    welcome.other_players_count = 0;
+
+    if (send_header(fd, MSG_WELCOME, player_id, player_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &welcome, sizeof(welcome));
+}
+
+int recv_welcome_payload(int fd, msg_welcome_t* welcome) {
+    return recv_all(fd, welcome, sizeof(*welcome));
+}

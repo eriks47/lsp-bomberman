@@ -4,8 +4,10 @@ LDFLAGS :=
 
 BUILD   := build
 
-CLIENT_SRCS := $(wildcard client/*.c)
-SERVER_SRCS := $(wildcard server/*.c)
+COMMON_SRCS := $(wildcard common/*.c)
+
+CLIENT_SRCS := $(wildcard client/*.c) $(COMMON_SRCS)
+SERVER_SRCS := $(wildcard server/*.c) $(COMMON_SRCS)
 
 CLIENT_OBJS := $(patsubst %.c, $(BUILD)/%.o, $(CLIENT_SRCS))
 SERVER_OBJS := $(patsubst %.c, $(BUILD)/%.o, $(SERVER_SRCS))
