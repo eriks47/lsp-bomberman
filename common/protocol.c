@@ -1,5 +1,6 @@
 #include "protocol.h"
 
+#include <arpa/inet.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -121,9 +122,7 @@ int recv_welcome_payload(int fd,
         return 0;
     }
 
-    return recv_all(fd,
-                    players,
-                    sizeof(players[0]) * welcome->other_players_count);
+    return recv_all(fd, players, sizeof(players[0]) * welcome->other_players_count);
 }
 
 int send_status(int fd, uint8_t sender_id, uint8_t target_id, uint8_t game_status) {
@@ -172,4 +171,215 @@ int recv_map_payload(int fd, game_map_t* map) {
     }
 
     return recv_all(fd, map->cells, map_cell_count(map));
+}
+
+int send_move_attempt(int fd, uint8_t sender_id, uint8_t direction_ascii) {
+    if (send_header(fd, MSG_MOVE_ATTEMPT, sender_id, TARGET_SERVER) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &direction_ascii, sizeof(direction_ascii));
+}
+
+int recv_move_attempt_payload(int fd, uint8_t* direction_ascii) {
+    return recv_all(fd, direction_ascii, sizeof(*direction_ascii));
+}
+
+int send_moved(int fd,
+               uint8_t sender_id,
+               uint8_t target_id,
+               uint8_t player_id,
+               uint16_t cell) {
+    uint8_t payload[3];
+    uint16_t net_cell = htons(cell);
+
+    payload[0] = player_id;
+    memcpy(payload + 1, &net_cell, sizeof(net_cell));
+
+    if (send_header(fd, MSG_MOVED, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, payload, sizeof(payload));
+}
+
+int recv_moved_payload(int fd, msg_moved_t* moved) {
+    uint8_t payload[3];
+    uint16_t net_cell;
+
+    if (recv_all(fd, payload, sizeof(payload)) != 0) {
+        return -1;
+    }
+
+    moved->player_id = payload[0];
+    memcpy(&net_cell, payload + 1, sizeof(net_cell));
+    moved->cell = ntohs(net_cell);
+
+    return 0;
+}
+
+int send_bomb_attempt(int fd, uint8_t sender_id, uint16_t cell) {
+    uint16_t net_cell = htons(cell);
+
+    if (send_header(fd, MSG_BOMB_ATTEMPT, sender_id, TARGET_SERVER) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &net_cell, sizeof(net_cell));
+}
+
+int recv_bomb_attempt_payload(int fd, uint16_t* cell) {
+    uint16_t net_cell;
+
+    if (recv_all(fd, &net_cell, sizeof(net_cell)) != 0) {
+        return -1;
+    }
+
+    *cell = ntohs(net_cell);
+    return 0;
+}
+
+int send_bomb(int fd,
+              uint8_t sender_id,
+              uint8_t target_id,
+              uint8_t owner_id,
+              uint16_t cell) {
+    uint8_t payload[3];
+    uint16_t net_cell = htons(cell);
+
+    payload[0] = owner_id;
+    memcpy(payload + 1, &net_cell, sizeof(net_cell));
+
+    if (send_header(fd, MSG_BOMB, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, payload, sizeof(payload));
+}
+
+int recv_bomb_payload(int fd, msg_bomb_t* bomb) {
+    uint8_t payload[3];
+    uint16_t net_cell;
+
+    if (recv_all(fd, payload, sizeof(payload)) != 0) {
+        return -1;
+    }
+
+    bomb->owner_id = payload[0];
+    memcpy(&net_cell, payload + 1, sizeof(net_cell));
+    bomb->cell = ntohs(net_cell);
+
+    return 0;
+}
+
+int send_explosion(int fd,
+                   uint8_t msg_type,
+                   uint8_t sender_id,
+                   uint8_t target_id,
+                   uint8_t radius,
+                   uint16_t cell) {
+    uint8_t payload[3];
+    uint16_t net_cell = htons(cell);
+
+    payload[0] = radius;
+    memcpy(payload + 1, &net_cell, sizeof(net_cell));
+
+    if (send_header(fd, msg_type, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, payload, sizeof(payload));
+}
+
+int recv_explosion_payload(int fd, msg_explosion_t* explosion) {
+    uint8_t payload[3];
+    uint16_t net_cell;
+
+    if (recv_all(fd, payload, sizeof(payload)) != 0) {
+        return -1;
+    }
+
+    explosion->radius = payload[0];
+    memcpy(&net_cell, payload + 1, sizeof(net_cell));
+    explosion->cell = ntohs(net_cell);
+
+    return 0;
+}
+
+int send_death(int fd, uint8_t sender_id, uint8_t target_id, uint8_t player_id) {
+    if (send_header(fd, MSG_DEATH, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &player_id, sizeof(player_id));
+}
+
+int recv_death_payload(int fd, uint8_t* player_id) {
+    return recv_all(fd, player_id, sizeof(*player_id));
+}
+
+int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id) {
+    if (send_header(fd, MSG_WINNER, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &winner_id, sizeof(winner_id));
+}
+
+int recv_winner_payload(int fd, uint8_t* winner_id) {
+    return recv_all(fd, winner_id, sizeof(*winner_id));
+}
+
+int send_bonus_retrieved(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint8_t player_id,
+                         uint16_t cell) {
+    uint8_t payload[3];
+    uint16_t net_cell = htons(cell);
+
+    payload[0] = player_id;
+    memcpy(payload + 1, &net_cell, sizeof(net_cell));
+
+    if (send_header(fd, MSG_BONUS_RETRIEVED, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, payload, sizeof(payload));
+}
+
+int recv_bonus_retrieved_payload(int fd, uint8_t* player_id, uint16_t* cell) {
+    uint8_t payload[3];
+    uint16_t net_cell;
+
+    if (recv_all(fd, payload, sizeof(payload)) != 0) {
+        return -1;
+    }
+
+    *player_id = payload[0];
+    memcpy(&net_cell, payload + 1, sizeof(net_cell));
+    *cell = ntohs(net_cell);
+
+    return 0;
+}
+
+int send_block_destroyed(int fd, uint8_t sender_id, uint8_t target_id, uint16_t cell) {
+    uint16_t net_cell = htons(cell);
+
+    if (send_header(fd, MSG_BLOCK_DESTROYED, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &net_cell, sizeof(net_cell));
+}
+
+int recv_block_destroyed_payload(int fd, uint16_t* cell) {
+    uint16_t net_cell;
+
+    if (recv_all(fd, &net_cell, sizeof(net_cell)) != 0) {
+        return -1;
+    }
+
+    *cell = ntohs(net_cell);
+    return 0;
 }

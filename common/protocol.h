@@ -3,8 +3,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "map.h"
+
 #include "config.h"
+#include "map.h"
 
 #define TARGET_BROADCAST 254
 #define TARGET_SERVER 255
@@ -36,6 +37,21 @@ typedef struct {
     char player_name[PROTOCOL_PLAYER_NAME_LEN];
 } protocol_player_info_t;
 
+typedef struct {
+    uint8_t player_id;
+    uint16_t cell;
+} msg_moved_t;
+
+typedef struct {
+    uint8_t owner_id;
+    uint16_t cell;
+} msg_bomb_t;
+
+typedef struct {
+    uint8_t radius;
+    uint16_t cell;
+} msg_explosion_t;
+
 int send_all(int fd, const void* data, size_t size);
 int recv_all(int fd, void* data, size_t size);
 
@@ -61,6 +77,50 @@ int recv_status_payload(int fd, uint8_t* game_status);
 
 int send_map(int fd, uint8_t sender_id, uint8_t target_id, const game_map_t* map);
 int recv_map_payload(int fd, game_map_t* map);
+
+int send_move_attempt(int fd, uint8_t sender_id, uint8_t direction_ascii);
+int recv_move_attempt_payload(int fd, uint8_t* direction_ascii);
+
+int send_moved(int fd,
+               uint8_t sender_id,
+               uint8_t target_id,
+               uint8_t player_id,
+               uint16_t cell);
+int recv_moved_payload(int fd, msg_moved_t* moved);
+
+int send_bomb_attempt(int fd, uint8_t sender_id, uint16_t cell);
+int recv_bomb_attempt_payload(int fd, uint16_t* cell);
+
+int send_bomb(int fd,
+              uint8_t sender_id,
+              uint8_t target_id,
+              uint8_t owner_id,
+              uint16_t cell);
+int recv_bomb_payload(int fd, msg_bomb_t* bomb);
+
+int send_explosion(int fd,
+                   uint8_t msg_type,
+                   uint8_t sender_id,
+                   uint8_t target_id,
+                   uint8_t radius,
+                   uint16_t cell);
+int recv_explosion_payload(int fd, msg_explosion_t* explosion);
+
+int send_death(int fd, uint8_t sender_id, uint8_t target_id, uint8_t player_id);
+int recv_death_payload(int fd, uint8_t* player_id);
+
+int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id);
+int recv_winner_payload(int fd, uint8_t* winner_id);
+
+int send_bonus_retrieved(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint8_t player_id,
+                         uint16_t cell);
+int recv_bonus_retrieved_payload(int fd, uint8_t* player_id, uint16_t* cell);
+
+int send_block_destroyed(int fd, uint8_t sender_id, uint8_t target_id, uint16_t cell);
+int recv_block_destroyed_payload(int fd, uint16_t* cell);
 
 void copy_protocol_string(char* dst, size_t dst_size, const char* src);
 

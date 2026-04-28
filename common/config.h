@@ -21,7 +21,8 @@ typedef enum {
     BONUS_NONE = 0,
     BONUS_SPEED = 1,
     BONUS_RADIUS = 2,
-    BONUS_TIMER = 3
+    BONUS_TIMER = 3,
+    BONUS_BOMB_COUNT = 4
 } bonus_type_t;
 
 typedef enum {
