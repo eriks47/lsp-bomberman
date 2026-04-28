@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "map.h"
-#include "protocol.h"
+#include "../common/map.h"
+#include "../common/protocol.h"
 
 typedef struct {
     bool active;
@@ -27,6 +27,130 @@ typedef struct {
     bool explosion_cells[MAX_MAP_CELLS];
     client_player_t players[MAX_PLAYERS];
 } client_state_t;
+
+static int connect_to_server(const char* host, uint16_t port);
+static void init_state(client_state_t* state);
+static void set_player_name(client_state_t* state,
+                            uint8_t player_id,
+                            const char* name);
+static void print_help(void);
+static bool handle_server_message(int fd, client_state_t* state);
+static bool handle_user_input(int fd, client_state_t* state);
+
+int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s <host> <port> <player_name>\n", argv[0]);
+        return 1;
+    }
+
+    const char* host = argv[1];
+    uint16_t port = (uint16_t)atoi(argv[2]);
+    const char* player_name = argv[3];
+
+    int fd = connect_to_server(host, port);
+
+    if (fd < 0) {
+        return 1;
+    }
+
+    if (send_hello(fd, "lsp-client-0.1", player_name) != 0) {
+        fprintf(stderr, "Failed to send HELLO\n");
+        close(fd);
+        return 1;
+    }
+
+    msg_header_t header;
+
+    if (recv_header(fd, &header) != 0) {
+        fprintf(stderr, "Failed to read response header\n");
+        close(fd);
+        return 1;
+    }
+
+    if (header.msg_type != MSG_WELCOME) {
+        fprintf(stderr, "Expected WELCOME, got message type %u\n",
+                header.msg_type);
+        close(fd);
+        return 1;
+    }
+
+    protocol_player_info_t existing_players[MAX_PLAYERS];
+    msg_welcome_t welcome;
+
+    if (recv_welcome_payload(fd, &welcome, existing_players, MAX_PLAYERS) !=
+        0) {
+        fprintf(stderr, "Failed to read WELCOME payload\n");
+        close(fd);
+        return 1;
+    }
+
+    client_state_t state;
+    init_state(&state);
+
+    state.my_id = header.target_id;
+    state.game_status = welcome.game_status;
+
+    if (state.my_id < MAX_PLAYERS) {
+        state.players[state.my_id].active = true;
+        state.players[state.my_id].alive = welcome.game_status == GAME_RUNNING;
+        set_player_name(&state, state.my_id, player_name);
+    }
+
+    for (uint8_t i = 0; i < welcome.other_players_count; ++i) {
+        uint8_t player_id = existing_players[i].id;
+
+        if (player_id < MAX_PLAYERS) {
+            state.players[player_id].active = true;
+            state.players[player_id].alive =
+                welcome.game_status == GAME_RUNNING;
+            state.players[player_id].ready = existing_players[i].ready != 0;
+            set_player_name(&state, player_id, existing_players[i].player_name);
+        }
+    }
+
+    printf("Connected to server: %s\n", welcome.server_id);
+    printf("Game status: %u\n", welcome.game_status);
+    printf("My player id: %u\n", state.my_id);
+
+    if (welcome.other_players_count > 0) {
+        printf("Players already in lobby:\n");
+
+        for (uint8_t i = 0; i < welcome.other_players_count; ++i) {
+            printf("  %u: %s ready=%u\n", existing_players[i].id,
+                   existing_players[i].player_name, existing_players[i].ready);
+        }
+    }
+
+    print_help();
+
+    bool running = true;
+
+    while (running) {
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(fd, &read_fds);
+        FD_SET(STDIN_FILENO, &read_fds);
+
+        int max_fd = fd > STDIN_FILENO ? fd : STDIN_FILENO;
+
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
+            perror("select");
+            break;
+        }
+
+        if (FD_ISSET(fd, &read_fds)) {
+            running = handle_server_message(fd, &state);
+        }
+
+        if (running && FD_ISSET(STDIN_FILENO, &read_fds)) {
+            running = handle_user_input(fd, &state);
+        }
+    }
+
+    close(fd);
+
+    return 0;
+}
 
 static int connect_to_server(const char* host, uint16_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -746,119 +870,4 @@ static bool handle_user_input(int fd, client_state_t* state) {
     }
 
     return true;
-}
-
-int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        fprintf(stderr, "Usage: %s <host> <port> <player_name>\n", argv[0]);
-        return 1;
-    }
-
-    const char* host = argv[1];
-    uint16_t port = (uint16_t)atoi(argv[2]);
-    const char* player_name = argv[3];
-
-    int fd = connect_to_server(host, port);
-
-    if (fd < 0) {
-        return 1;
-    }
-
-    if (send_hello(fd, "lsp-client-0.1", player_name) != 0) {
-        fprintf(stderr, "Failed to send HELLO\n");
-        close(fd);
-        return 1;
-    }
-
-    msg_header_t header;
-
-    if (recv_header(fd, &header) != 0) {
-        fprintf(stderr, "Failed to read response header\n");
-        close(fd);
-        return 1;
-    }
-
-    if (header.msg_type != MSG_WELCOME) {
-        fprintf(stderr, "Expected WELCOME, got message type %u\n",
-                header.msg_type);
-        close(fd);
-        return 1;
-    }
-
-    protocol_player_info_t existing_players[MAX_PLAYERS];
-    msg_welcome_t welcome;
-
-    if (recv_welcome_payload(fd, &welcome, existing_players, MAX_PLAYERS) !=
-        0) {
-        fprintf(stderr, "Failed to read WELCOME payload\n");
-        close(fd);
-        return 1;
-    }
-
-    client_state_t state;
-    init_state(&state);
-
-    state.my_id = header.target_id;
-    state.game_status = welcome.game_status;
-
-    if (state.my_id < MAX_PLAYERS) {
-        state.players[state.my_id].active = true;
-        state.players[state.my_id].alive = welcome.game_status == GAME_RUNNING;
-        set_player_name(&state, state.my_id, player_name);
-    }
-
-    for (uint8_t i = 0; i < welcome.other_players_count; ++i) {
-        uint8_t player_id = existing_players[i].id;
-
-        if (player_id < MAX_PLAYERS) {
-            state.players[player_id].active = true;
-            state.players[player_id].alive =
-                welcome.game_status == GAME_RUNNING;
-            state.players[player_id].ready = existing_players[i].ready != 0;
-            set_player_name(&state, player_id, existing_players[i].player_name);
-        }
-    }
-
-    printf("Connected to server: %s\n", welcome.server_id);
-    printf("Game status: %u\n", welcome.game_status);
-    printf("My player id: %u\n", state.my_id);
-
-    if (welcome.other_players_count > 0) {
-        printf("Players already in lobby:\n");
-
-        for (uint8_t i = 0; i < welcome.other_players_count; ++i) {
-            printf("  %u: %s ready=%u\n", existing_players[i].id,
-                   existing_players[i].player_name, existing_players[i].ready);
-        }
-    }
-
-    print_help();
-
-    bool running = true;
-
-    while (running) {
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(fd, &read_fds);
-        FD_SET(STDIN_FILENO, &read_fds);
-
-        int max_fd = fd > STDIN_FILENO ? fd : STDIN_FILENO;
-
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
-            perror("select");
-            break;
-        }
-
-        if (FD_ISSET(fd, &read_fds)) {
-            running = handle_server_message(fd, &state);
-        }
-
-        if (running && FD_ISSET(STDIN_FILENO, &read_fds)) {
-            running = handle_user_input(fd, &state);
-        }
-    }
-
-    close(fd);
-
-    return 0;
 }
