@@ -330,6 +330,39 @@ int recv_winner_payload(int fd, uint8_t* winner_id) {
     return recv_all(fd, winner_id, sizeof(*winner_id));
 }
 
+int send_bonus_available(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint8_t bonus_type,
+                         uint16_t cell) {
+    uint8_t payload[3];
+    uint16_t net_cell = htons(cell);
+
+    payload[0] = bonus_type;
+    memcpy(payload + 1, &net_cell, sizeof(net_cell));
+
+    if (send_header(fd, MSG_BONUS_AVAILABLE, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, payload, sizeof(payload));
+}
+
+int recv_bonus_available_payload(int fd, uint8_t* bonus_type, uint16_t* cell) {
+    uint8_t payload[3];
+    uint16_t net_cell;
+
+    if (recv_all(fd, payload, sizeof(payload)) != 0) {
+        return -1;
+    }
+
+    *bonus_type = payload[0];
+    memcpy(&net_cell, payload + 1, sizeof(net_cell));
+    *cell = ntohs(net_cell);
+
+    return 0;
+}
+
 int send_bonus_retrieved(int fd,
                          uint8_t sender_id,
                          uint8_t target_id,

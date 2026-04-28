@@ -24,6 +24,7 @@ typedef struct {
     uint8_t game_status;
     bool has_map;
     game_map_t map;
+    bool explosion_cells[MAX_MAP_CELLS];
     client_player_t players[MAX_PLAYERS];
 } client_state_t;
 
@@ -77,7 +78,11 @@ static void print_help(void) {
     printf("  /ready  mark yourself ready\n");
     printf("  /ping   send PING\n");
     printf("  /quit   leave the game\n");
+    printf("  /sync   request full state sync\n");
+    printf("  /lobby  return to lobby after game end\n");
     printf("  /bomb   place bomb\n");
+    printf("  /players show players\n");
+    printf("  /map    show map\n");
     printf("  w       move up\n");
     printf("  s       move down\n");
     printf("  a       move left\n");
@@ -105,6 +110,88 @@ static uint16_t map_cell_at(const game_map_t* map, uint16_t row, uint16_t col) {
     return make_cell_index(row, col, map->cols);
 }
 
+static char bonus_cell_from_type(uint8_t bonus_type) {
+    if (bonus_type == BONUS_SPEED) {
+        return 'A';
+    }
+
+    if (bonus_type == BONUS_RADIUS) {
+        return 'R';
+    }
+
+    if (bonus_type == BONUS_TIMER) {
+        return 'T';
+    }
+
+    if (bonus_type == BONUS_BOMB_COUNT) {
+        return 'N';
+    }
+
+    return '.';
+}
+
+static void clear_explosions(client_state_t* state) {
+    memset(state->explosion_cells, 0, sizeof(state->explosion_cells));
+}
+
+static bool map_blocks_explosion(char cell) {
+    return cell == 'H' || cell == 'S';
+}
+
+static void set_explosion_cells(client_state_t* state,
+                                uint16_t center_cell,
+                                uint8_t radius,
+                                bool value) {
+    if (!state->has_map) {
+        return;
+    }
+
+    if (center_cell >= map_cell_count(&state->map)) {
+        return;
+    }
+
+    uint16_t center_row;
+    uint16_t center_col;
+
+    split_cell_index(center_cell,
+                     state->map.cols,
+                     &center_row,
+                     &center_col);
+
+    state->explosion_cells[center_cell] = value;
+
+    const int directions[4][2] = {
+        {-1, 0},
+        {1, 0},
+        {0, -1},
+        {0, 1}
+    };
+
+    for (size_t direction = 0; direction < 4; ++direction) {
+        for (uint8_t distance = 1; distance <= radius; ++distance) {
+            int row = (int)center_row + directions[direction][0] * distance;
+            int col = (int)center_col + directions[direction][1] * distance;
+
+            if (row < 0 ||
+                col < 0 ||
+                row >= state->map.rows ||
+                col >= state->map.cols) {
+                break;
+            }
+
+            uint16_t cell = map_cell_at(&state->map,
+                                        (uint16_t)row,
+                                        (uint16_t)col);
+
+            state->explosion_cells[cell] = value;
+
+            if (map_blocks_explosion((char)state->map.cells[cell])) {
+                break;
+            }
+        }
+    }
+}
+
 static void render_map(const client_state_t* state) {
     if (!state->has_map) {
         return;
@@ -116,6 +203,10 @@ static void render_map(const client_state_t* state) {
         for (uint8_t col = 0; col < state->map.cols; ++col) {
             uint16_t cell = map_cell_at(&state->map, row, col);
             char shown = (char)state->map.cells[cell];
+
+            if (state->explosion_cells[cell]) {
+                shown = '*';
+            }
 
             for (uint8_t player_id = 0; player_id < MAX_PLAYERS; ++player_id) {
                 const client_player_t* player = &state->players[player_id];
@@ -221,6 +312,7 @@ static void print_players(const client_state_t* state) {
 static void handle_map_received(client_state_t* state, const game_map_t* map) {
     state->map = *map;
     state->has_map = true;
+    clear_explosions(state);
 
     init_player_positions_from_map(state);
     clear_start_markers_from_map(state);
@@ -305,6 +397,16 @@ static bool handle_server_message(int fd, client_state_t* state) {
             print_players(state);
             break;
 
+        case MSG_SYNC_BOARD:
+            printf("SYNC_BOARD received\n");
+            clear_explosions(state);
+
+            for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+                state->players[i].alive = false;
+            }
+
+            break;
+
         case MSG_SET_STATUS: {
             uint8_t game_status;
 
@@ -316,6 +418,19 @@ static bool handle_server_message(int fd, client_state_t* state) {
             state->game_status = game_status;
 
             printf("Game status changed: %u\n", game_status);
+
+            if (game_status == GAME_LOBBY) {
+                state->has_map = false;
+                clear_explosions(state);
+
+                for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+                    state->players[i].ready = false;
+                    state->players[i].alive = false;
+                    state->players[i].cell = 0;
+                }
+
+                printf("Returned to lobby. Type /ready to start again.\n");
+            }
 
             if (game_status == GAME_RUNNING) {
                 for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
@@ -349,6 +464,8 @@ static bool handle_server_message(int fd, client_state_t* state) {
             }
 
             if (moved.player_id < MAX_PLAYERS) {
+                state->players[moved.player_id].active = true;
+                state->players[moved.player_id].alive = true;
                 state->players[moved.player_id].cell = moved.cell;
             }
 
@@ -387,6 +504,7 @@ static bool handle_server_message(int fd, client_state_t* state) {
             }
 
             remove_bomb_at_cell(state, explosion.cell);
+            set_explosion_cells(state, explosion.cell, explosion.radius, true);
 
             printf("Explosion started at cell %u radius %u\n",
                    explosion.cell,
@@ -403,6 +521,8 @@ static bool handle_server_message(int fd, client_state_t* state) {
                 printf("Failed to read EXPLOSION_END payload\n");
                 return false;
             }
+
+            set_explosion_cells(state, explosion.cell, explosion.radius, false);
 
             printf("Explosion ended at cell %u radius %u\n",
                    explosion.cell,
@@ -425,6 +545,24 @@ static bool handle_server_message(int fd, client_state_t* state) {
             }
 
             printf("Player %u died\n", player_id);
+            render_map(state);
+            break;
+        }
+
+        case MSG_BONUS_AVAILABLE: {
+            uint8_t bonus_type;
+            uint16_t cell;
+
+            if (recv_bonus_available_payload(fd, &bonus_type, &cell) != 0) {
+                printf("Failed to read BONUS_AVAILABLE payload\n");
+                return false;
+            }
+
+            if (state->has_map && cell < map_cell_count(&state->map)) {
+                state->map.cells[cell] = (uint8_t)bonus_cell_from_type(bonus_type);
+            }
+
+            printf("Bonus available at cell %u type %u\n", cell, bonus_type);
             render_map(state);
             break;
         }
@@ -548,6 +686,23 @@ static bool handle_user_input(int fd, client_state_t* state) {
     } else if (strcmp(line, "/quit") == 0) {
         send_header(fd, MSG_LEAVE, state->my_id, TARGET_SERVER);
         return false;
+    } else if (strcmp(line, "/sync") == 0) {
+        if (send_header(fd, MSG_SYNC_REQUEST, state->my_id, TARGET_SERVER) != 0) {
+            return false;
+        }
+
+        printf("SYNC_REQUEST sent\n");
+    } else if (strcmp(line, "/lobby") == 0) {
+        if (state->game_status != GAME_END) {
+            printf("Game is not ended yet\n");
+            return true;
+        }
+
+        if (send_status(fd, state->my_id, TARGET_SERVER, GAME_LOBBY) != 0) {
+            return false;
+        }
+
+        printf("Return to lobby requested\n");
     } else if (strcmp(line, "/bomb") == 0) {
         if (state->game_status != GAME_RUNNING) {
             printf("Game is not running yet\n");

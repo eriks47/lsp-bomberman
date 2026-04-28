@@ -312,6 +312,98 @@ static void broadcast_block_destroyed(const client_t clients[MAX_PLAYERS],
     }
 }
 
+static uint8_t bonus_type_from_cell(char cell) {
+    if (cell == 'A') {
+        return BONUS_SPEED;
+    }
+
+    if (cell == 'R') {
+        return BONUS_RADIUS;
+    }
+
+    if (cell == 'T') {
+        return BONUS_TIMER;
+    }
+
+    if (cell == 'N') {
+        return BONUS_BOMB_COUNT;
+    }
+
+    return BONUS_NONE;
+}
+
+static void send_available_bonuses_to_client(int fd, const game_map_t* map) {
+    size_t cells = map_cell_count(map);
+
+    for (size_t i = 0; i < cells; ++i) {
+        uint8_t bonus_type = bonus_type_from_cell((char)map->cells[i]);
+
+        if (bonus_type != BONUS_NONE) {
+            send_bonus_available(fd,
+                                 TARGET_SERVER,
+                                 TARGET_BROADCAST,
+                                 bonus_type,
+                                 (uint16_t)i);
+        }
+    }
+}
+
+static void broadcast_available_bonuses(const client_t clients[MAX_PLAYERS],
+                                        const game_map_t* map) {
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (clients[i].active) {
+            send_available_bonuses_to_client(clients[i].fd, map);
+        }
+    }
+}
+
+static void send_sync_to_client(int fd,
+                                const client_t clients[MAX_PLAYERS],
+                                const game_state_t* game) {
+    send_header(fd, MSG_SYNC_BOARD, TARGET_SERVER, TARGET_BROADCAST);
+    send_status(fd, TARGET_SERVER, TARGET_BROADCAST, game->status);
+    send_map(fd, TARGET_SERVER, TARGET_BROADCAST, &game->map);
+
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (!clients[i].active) {
+            continue;
+        }
+
+        if (game->players[i].active && game->players[i].alive) {
+            uint16_t cell = cell_index(&game->map,
+                                       game->players[i].row,
+                                       game->players[i].col);
+
+            send_moved(fd,
+                       TARGET_SERVER,
+                       TARGET_BROADCAST,
+                       i,
+                       cell);
+        } else {
+            send_death(fd,
+                       TARGET_SERVER,
+                       TARGET_BROADCAST,
+                       i);
+        }
+    }
+
+    for (size_t i = 0; i < MAX_BOMBS; ++i) {
+        if (game->bombs[i].active) {
+            uint16_t cell = cell_index(&game->map,
+                                       game->bombs[i].row,
+                                       game->bombs[i].col);
+
+            send_bomb(fd,
+                      TARGET_SERVER,
+                      TARGET_BROADCAST,
+                      game->bombs[i].owner_id,
+                      cell);
+        }
+    }
+
+    send_available_bonuses_to_client(fd, &game->map);
+}
+
 static bool all_ready(const client_t clients[MAX_PLAYERS]) {
     uint8_t active_count = 0;
 
@@ -340,7 +432,9 @@ static void disconnect_client(client_t clients[MAX_PLAYERS], uint8_t id) {
     send_header_to_all(clients, MSG_LEAVE, id);
 }
 
-static void accept_new_client(int server_fd, client_t clients[MAX_PLAYERS]) {
+static void accept_new_client(int server_fd,
+                              client_t clients[MAX_PLAYERS],
+                              const game_state_t* game) {
     struct sockaddr_in client_address;
     socklen_t client_address_size = sizeof(client_address);
 
@@ -383,7 +477,7 @@ static void accept_new_client(int server_fd, client_t clients[MAX_PLAYERS]) {
 
     if (send_welcome(client_fd,
                      (uint8_t)free_id,
-                     GAME_LOBBY,
+                     game->status,
                      existing_players,
                      existing_count) != 0) {
         fprintf(stderr, "Failed to send WELCOME\n");
@@ -401,6 +495,10 @@ static void accept_new_client(int server_fd, client_t clients[MAX_PLAYERS]) {
 
     printf("Player %d connected: %s\n", free_id, clients[free_id].name);
     broadcast_hello(clients, (uint8_t)free_id, &hello, client_fd);
+
+    if (game->status != GAME_LOBBY) {
+        send_sync_to_client(client_fd, clients, game);
+    }
 }
 
 static bool bomb_exists_at(const game_state_t* game, uint16_t row, uint16_t col) {
@@ -543,6 +641,7 @@ static void start_game(game_state_t* game,
 
     broadcast_status(clients, GAME_RUNNING);
     broadcast_map(clients, &game->map);
+    broadcast_available_bonuses(clients, &game->map);
 }
 
 static size_t active_bombs_by_owner(const game_state_t* game, uint8_t owner_id) {
@@ -893,8 +992,25 @@ static void update_game(game_state_t* game,
     check_winner(game, clients);
 }
 
+static void reset_to_lobby(game_state_t* game,
+                           client_t clients[MAX_PLAYERS],
+                           const game_map_t* initial_map) {
+    init_game_state(game, initial_map);
+    game->status = GAME_LOBBY;
+
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (clients[i].active) {
+            clients[i].ready = false;
+        }
+    }
+
+    printf("Game returned to lobby\n");
+    broadcast_status(clients, GAME_LOBBY);
+}
+
 static void handle_client_message(client_t clients[MAX_PLAYERS],
                                   game_state_t* game,
+                                  const game_map_t* initial_map,
                                   uint8_t id) {
     msg_header_t header;
 
@@ -961,6 +1077,30 @@ static void handle_client_message(client_t clients[MAX_PLAYERS],
             place_bomb(game, clients, id, requested_cell);
             break;
         }
+
+        case MSG_SET_STATUS: {
+            uint8_t requested_status;
+
+            if (recv_status_payload(clients[id].fd, &requested_status) != 0) {
+                disconnect_client(clients, id);
+                game->players[id].active = false;
+                game->players[id].alive = false;
+                break;
+            }
+
+            if (game->status == GAME_END && requested_status == GAME_LOBBY) {
+                reset_to_lobby(game, clients, initial_map);
+            } else {
+                send_header(clients[id].fd, MSG_ERROR, TARGET_SERVER, id);
+            }
+
+            break;
+        }
+
+        case MSG_SYNC_REQUEST:
+            printf("SYNC_REQUEST from player %u\n", id);
+            send_sync_to_client(clients[id].fd, clients, game);
+            break;
 
         default:
             fprintf(stderr,
@@ -1032,12 +1172,12 @@ int main(int argc, char* argv[]) {
         }
 
         if (ready > 0 && FD_ISSET(server_fd, &read_fds)) {
-            accept_new_client(server_fd, clients);
+            accept_new_client(server_fd, clients, &game);
         }
 
         for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
             if (clients[i].active && FD_ISSET(clients[i].fd, &read_fds)) {
-                handle_client_message(clients, &game, i);
+                handle_client_message(clients, &game, &loaded_map, i);
             }
         }
 

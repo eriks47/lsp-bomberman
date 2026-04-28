@@ -112,6 +112,13 @@ int recv_death_payload(int fd, uint8_t* player_id);
 int send_winner(int fd, uint8_t sender_id, uint8_t target_id, uint8_t winner_id);
 int recv_winner_payload(int fd, uint8_t* winner_id);
 
+int send_bonus_available(int fd,
+                         uint8_t sender_id,
+                         uint8_t target_id,
+                         uint8_t bonus_type,
+                         uint16_t cell);
+int recv_bonus_available_payload(int fd, uint8_t* bonus_type, uint16_t* cell);
+
 int send_bonus_retrieved(int fd,
                          uint8_t sender_id,
                          uint8_t target_id,
