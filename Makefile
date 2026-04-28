@@ -1,6 +1,6 @@
 CC      := gcc
 CFLAGS  := -Wall -Wextra -Wpedantic -Icommon
-LDFLAGS :=
+LDFLAGS := -lraylib
 
 BUILD   := build
 
