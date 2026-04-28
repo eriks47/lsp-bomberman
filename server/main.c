@@ -118,6 +118,30 @@ static void broadcast_hello(const client_t clients[MAX_PLAYERS],
     }
 }
 
+static void broadcast_status(const client_t clients[MAX_PLAYERS],
+                             uint8_t game_status) {
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (clients[i].active) {
+            send_status(clients[i].fd,
+                        TARGET_SERVER,
+                        TARGET_BROADCAST,
+                        game_status);
+        }
+    }
+}
+
+static void broadcast_map(const client_t clients[MAX_PLAYERS],
+                          const game_map_t* map) {
+    for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
+        if (clients[i].active) {
+            send_map(clients[i].fd,
+                     TARGET_SERVER,
+                     TARGET_BROADCAST,
+                     map);
+        }
+    }
+}
+
 static bool all_ready(const client_t clients[MAX_PLAYERS]) {
     uint8_t active_count = 0;
 
@@ -209,7 +233,10 @@ static void accept_new_client(int server_fd, client_t clients[MAX_PLAYERS]) {
     broadcast_hello(clients, (uint8_t)free_id, &hello, client_fd);
 }
 
-static void handle_client_message(client_t clients[MAX_PLAYERS], uint8_t id) {
+static void handle_client_message(client_t clients[MAX_PLAYERS],
+                                  uint8_t id,
+                                  game_status_t* game_status,
+                                  const game_map_t* map)  {
     msg_header_t header;
 
     if (recv_header(clients[id].fd, &header) != 0) {
@@ -232,12 +259,22 @@ static void handle_client_message(client_t clients[MAX_PLAYERS], uint8_t id) {
             break;
 
         case MSG_SET_READY:
+            if (*game_status != GAME_LOBBY) {
+                send_header(clients[id].fd, MSG_ERROR, TARGET_SERVER, id);
+                break;
+            }
+
             clients[id].ready = true;
             printf("Player %u is ready\n", id);
             broadcast_header(clients, MSG_SET_READY, id, -1);
 
             if (all_ready(clients)) {
-                printf("All players are ready. Game start will be implemented later.\n");
+                *game_status = GAME_RUNNING;
+
+                printf("All players are ready. Starting game.\n");
+
+                broadcast_status(clients, GAME_RUNNING);
+                broadcast_map(clients, map);
             }
             break;
 
@@ -251,13 +288,27 @@ static void handle_client_message(client_t clients[MAX_PLAYERS], uint8_t id) {
     }
 }
 
+
+
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
+   if (argc != 3) {
+    fprintf(stderr, "Usage: %s <port> <map_file>\n", argv[0]);
+    return 1;
     }
 
     uint16_t port = (uint16_t)atoi(argv[1]);
+    game_map_t map;
+
+if (map_load_from_file(argv[2], &map) != 0) {
+    return 1;
+    }
+
+    printf("Loaded map from %s\n", argv[2]);
+    map_print(&map);
+
+    game_status_t game_status = GAME_LOBBY;
+
+
     int server_fd = create_server_socket(port);
 
     if (server_fd < 0) {
@@ -297,7 +348,7 @@ int main(int argc, char* argv[]) {
 
         for (uint8_t i = 0; i < MAX_PLAYERS; ++i) {
             if (clients[i].active && FD_ISSET(clients[i].fd, &read_fds)) {
-                handle_client_message(clients, i);
+                handle_client_message(clients, i, &game_status, &map);
             }
         }
     }

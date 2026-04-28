@@ -82,6 +82,31 @@ static bool handle_server_message(int fd, uint8_t my_id) {
         case MSG_PONG:
             printf("PONG received\n");
             break;
+            
+        case MSG_SET_STATUS: {
+            uint8_t game_status;
+
+            if (recv_status_payload(fd, &game_status) != 0) {
+                printf("Failed to read SET_STATUS payload\n");
+                return false;
+            }
+
+            printf("Game status changed: %u\n", game_status);
+            break;
+        }
+
+        case MSG_MAP: {
+            game_map_t map;
+
+            if (recv_map_payload(fd, &map) != 0) {
+                printf("Failed to read MAP payload\n");
+                return false;
+            }
+
+            printf("MAP received\n");
+            map_print(&map);
+            break;
+        }
 
         case MSG_ERROR:
             printf("ERROR received from server\n");

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
+#include "map.h"
 #include "config.h"
 
 #define TARGET_BROADCAST 254
@@ -55,6 +55,12 @@ int recv_welcome_payload(int fd,
                          msg_welcome_t* welcome,
                          protocol_player_info_t* players,
                          size_t max_players);
+
+int send_status(int fd, uint8_t sender_id, uint8_t target_id, uint8_t game_status);
+int recv_status_payload(int fd, uint8_t* game_status);
+
+int send_map(int fd, uint8_t sender_id, uint8_t target_id, const game_map_t* map);
+int recv_map_payload(int fd, game_map_t* map);
 
 void copy_protocol_string(char* dst, size_t dst_size, const char* src);
 

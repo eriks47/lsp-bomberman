@@ -125,3 +125,51 @@ int recv_welcome_payload(int fd,
                     players,
                     sizeof(players[0]) * welcome->other_players_count);
 }
+
+int send_status(int fd, uint8_t sender_id, uint8_t target_id, uint8_t game_status) {
+    if (send_header(fd, MSG_SET_STATUS, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, &game_status, sizeof(game_status));
+}
+
+int recv_status_payload(int fd, uint8_t* game_status) {
+    return recv_all(fd, game_status, sizeof(*game_status));
+}
+
+int send_map(int fd, uint8_t sender_id, uint8_t target_id, const game_map_t* map) {
+    uint8_t size_payload[2];
+
+    size_payload[0] = map->rows;
+    size_payload[1] = map->cols;
+
+    if (send_header(fd, MSG_MAP, sender_id, target_id) != 0) {
+        return -1;
+    }
+
+    if (send_all(fd, size_payload, sizeof(size_payload)) != 0) {
+        return -1;
+    }
+
+    return send_all(fd, map->cells, map_cell_count(map));
+}
+
+int recv_map_payload(int fd, game_map_t* map) {
+    uint8_t size_payload[2];
+
+    memset(map, 0, sizeof(*map));
+
+    if (recv_all(fd, size_payload, sizeof(size_payload)) != 0) {
+        return -1;
+    }
+
+    map->rows = size_payload[0];
+    map->cols = size_payload[1];
+
+    if (map->rows == 0 || map->cols == 0) {
+        return -1;
+    }
+
+    return recv_all(fd, map->cells, map_cell_count(map));
+}
