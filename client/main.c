@@ -50,8 +50,8 @@ static const Color PLAYER_COLORS[8] = {
 
 /* ── Screen sizes ────────────────────────────────────────────────────────────
  */
-#ifndef SCREEN_WIDTH
-#define SCREEN_WIDTH 1280
+#ifdef SCREEN_WIDTH
+#define SCREEN_WIDTH 1000
 #endif
 #ifndef SCREEN_HEIGHT
 #define SCREEN_HEIGHT 720
