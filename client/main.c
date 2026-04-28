@@ -11,8 +11,7 @@
 
 #include "../common/map.h"
 #include "../common/protocol.h"
-#include "graphics/input_field.h"
-#include "net/net.h"
+#include "input_field.h"
 #include "config.h"
 
 /* ── Palette ────────────────────────────────────────────────────────────────
@@ -99,7 +98,7 @@ typedef struct {
     uint16_t port;
     char player_name[PROTOCOL_PLAYER_NAME_LEN];
     char client_id[CLIENT_ID_LEN];
-    char server_id[PROTOCOL_SERVER_ID_LEN];
+    char server_id[SERVER_ID_LEN];
 
     /* identity */
     uint8_t my_id;
