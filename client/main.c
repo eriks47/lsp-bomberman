@@ -166,6 +166,32 @@ static bool blocks_explosion(char ch) {
     return ch == 'H' || ch == 'S';
 }
 
+static int create_tcp_client(const char* ip, int port) {
+    int sockfd;
+    struct sockaddr_in addr;
+
+    // 1. Create socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        exit(1);
+    }
+
+    // 2. Set destination
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip, &addr.sin_addr);
+
+    // 3. Connect
+    if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("connect");
+        exit(1);
+    }
+
+    return sockfd;
+}
+
 static char bonus_char(uint8_t type) {
     switch (type) {
         case BONUS_SPEED:
