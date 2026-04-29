@@ -111,6 +111,10 @@ typedef struct {
 
 Image bg_image;
 Texture2D bg_texture;
+Image hard_image;
+Texture2D hard_texture;
+Image soft_image;
+Texture2D soft_texture;
 
 static void notify(client_t* c, const char* msg) {
     strncpy(c->notify_msg, msg, sizeof(c->notify_msg) - 1);
@@ -599,7 +603,7 @@ static void render_lobby(client_t* c) {
 #define SIDEBAR_W 280
 
 static void render_game(client_t* c) {
-    ClearBackground(COL_BG);
+    ClearBackground(BLACK);
 
     if (c->has_map) {
         int map_px_w = c->map.cols * CELL_SIZE;
@@ -618,11 +622,12 @@ static void render_game(client_t* c) {
 
                 Color bg = COL_EMPTY;
                 Color fg = COL_TEXT;
+                Texture2D* tex = NULL;
 
                 if (ch == 'H')
-                    bg = COL_WALL;
+                    tex = &hard_texture;
                 else if (ch == 'S')
-                    bg = COL_SOFT;
+                    tex = &soft_texture;
                 else if (ch == 'B')
                     bg = COL_BOMB;
                 else if (is_bonus(ch))
@@ -631,15 +636,13 @@ static void render_game(client_t* c) {
                 if (c->explosion_cells[idx])
                     bg = COL_EXPLOSION;
 
-                DrawRectangle(cx, cy, CELL_SIZE - 1, CELL_SIZE - 1, bg);
+                if (tex) {
+                    DrawTexture(*tex, cx, cy, WHITE);
+                } else {
+                    DrawRectangle(cx, cy, CELL_SIZE - 1, CELL_SIZE - 1, bg);
+                }
 
-                if (ch == 'H') {
-                    DrawRectangle(cx + 1, cy + 1, CELL_SIZE - 3, CELL_SIZE - 3,
-                                  (Color){45, 45, 65, 255});
-                } else if (ch == 'S') {
-                    DrawText("#", cx + 10, cy + 8, 18,
-                             (Color){180, 130, 80, 255});
-                } else if (ch == 'B') {
+                if (ch == 'B') {
                     DrawText("o", cx + 10, cy + 7, 20,
                              (Color){255, 80, 60, 255});
                 } else if (is_bonus(ch)) {
@@ -993,6 +996,7 @@ static void update_endgame(client_t* c) {
 int main(void) {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
+    SetExitKey(KEY_NULL);
     SetTargetFPS(60);
 
     client_t c;
@@ -1014,6 +1018,14 @@ int main(void) {
     bg_image = LoadImage("assets/title_background.png");
     ImageResize(&bg_image, SCREEN_WIDTH, SCREEN_HEIGHT);
     bg_texture = LoadTextureFromImage(bg_image);
+
+    hard_image = LoadImage("assets/hard.png");
+    ImageResize(&hard_image, CELL_SIZE, CELL_SIZE);
+    hard_texture = LoadTextureFromImage(hard_image);
+
+    soft_image = LoadImage("assets/soft.png");
+    ImageResize(&soft_image, CELL_SIZE, CELL_SIZE);
+    soft_texture = LoadTextureFromImage(soft_image);
 
     while (!WindowShouldClose()) {
         if (c.connected && c.sockfd >= 0) {
