@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "map.h"
-#include "protocol.h"
+#include "../common/map.h"
+#include "../common/protocol.h"
 
 #define MAX_BOMBS 128
 #define MAX_EXPLOSIONS 128
