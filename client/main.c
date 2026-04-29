@@ -14,8 +14,6 @@
 #include "input_field.h"
 #include "config.h"
 
-/* ── Palette ────────────────────────────────────────────────────────────────
- */
 #define COL_BG (Color){18, 18, 24, 255}
 #define COL_PANEL (Color){28, 28, 38, 255}
 #define COL_BORDER (Color){55, 55, 80, 255}
@@ -35,8 +33,6 @@
 #define COL_BTN (Color){255, 200, 50, 255}
 #define COL_BTN_TEXT (Color){18, 18, 24, 255}
 
-/* ── Player colours ──────────────────────────────────────────────────────────
- */
 static const Color PLAYER_COLORS[8] = {
     {100, 180, 255, 255}, /* 1 – blue   */
     {255, 120, 80, 255},  /* 2 – orange */
@@ -48,8 +44,6 @@ static const Color PLAYER_COLORS[8] = {
     {180, 140, 255, 255}, /* 8 – lilac  */
 };
 
-/* ── Screen sizes ────────────────────────────────────────────────────────────
- */
 #ifdef SCREEN_WIDTH
 #define SCREEN_WIDTH 1000
 #endif
@@ -66,8 +60,6 @@ static const Color PLAYER_COLORS[8] = {
 #define CLIENT_ID_LEN 32
 #endif
 
-/* ── Game state machine ──────────────────────────────────────────────────────
- */
 typedef enum {
     SCREEN_CONNECT,
     SCREEN_LOBBY,
@@ -75,8 +67,6 @@ typedef enum {
     SCREEN_ENDGAME,
 } screen_t;
 
-/* ── Per-player client state ─────────────────────────────────────────────────
- */
 typedef struct {
     bool active;
     bool alive;
@@ -85,25 +75,19 @@ typedef struct {
     char name[PROTOCOL_PLAYER_NAME_LEN];
 } gui_player_t;
 
-/* ── Full client state ───────────────────────────────────────────────────────
- */
 typedef struct {
-    /* networking */
     int sockfd;
     struct pollfd pfd;
     bool connected;
 
-    /* connection form */
     char server_address[256];
     uint16_t port;
     char player_name[PROTOCOL_PLAYER_NAME_LEN];
     char client_id[CLIENT_ID_LEN];
     char server_id[SERVER_ID_LEN];
 
-    /* identity */
     uint8_t my_id;
 
-    /* game state */
     screen_t screen;
     uint8_t game_status;
     game_map_t map;
@@ -111,29 +95,23 @@ typedef struct {
     bool explosion_cells[MAX_MAP_CELLS];
     gui_player_t players[MAX_PLAYERS];
 
-    /* end-game */
     uint8_t winner_id; /* 255 = draw */
     msg_round_stat_t round_stats[MAX_PLAYERS];
     uint8_t round_stats_count;
 
-    /* notification bar */
     char notify_msg[256];
     double notify_until; /* GetTime() deadline */
 
-    /* connect-screen input fields */
     input_field_t ip_input;
     input_field_t port_input;
     input_field_t name_input;
 
-    /* connect-screen error */
     char connect_error[128];
 } client_t;
 
 Image bg_image;
 Texture2D bg_texture;
 
-/* ── Helpers ─────────────────────────────────────────────────────────────────
- */
 static void notify(client_t* c, const char* msg) {
     strncpy(c->notify_msg, msg, sizeof(c->notify_msg) - 1);
     c->notify_until = GetTime() + 3.0;
@@ -173,20 +151,17 @@ static int create_tcp_client(const char* ip, int port) {
     int sockfd;
     struct sockaddr_in addr;
 
-    // 1. Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket");
         exit(1);
     }
 
-    // 2. Set destination
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     inet_pton(AF_INET, ip, &addr.sin_addr);
 
-    // 3. Connect
     if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("connect");
         exit(1);
@@ -274,8 +249,6 @@ static void remove_bomb(client_t* c, uint16_t cell) {
         c->map.cells[cell] = '.';
 }
 
-/* ── Network: handle one server message ──────────────────────────────────────
- */
 static bool handle_server_message(client_t* c) {
     msg_header_t hdr;
     if (recv_header(c->sockfd, &hdr) != 0) {
@@ -504,8 +477,6 @@ static bool handle_server_message(client_t* c) {
     return true;
 }
 
-/* ── Drawing helpers ─────────────────────────────────────────────────────────
- */
 static void draw_panel(int x, int y, int w, int h) {
     DrawRectangle(x, y, w, h, COL_PANEL);
     DrawRectangleLinesEx((Rectangle){x, y, w, h}, 1.5f, COL_BORDER);
@@ -535,15 +506,11 @@ static bool btn_pressed(Rectangle r) {
            CheckCollisionPointRec(GetMousePosition(), r);
 }
 
-/* ── Render: connect screen ──────────────────────────────────────────────────
- */
 static void render_connect(client_t* c) {
     DrawTexture(bg_texture, 0, 0, WHITE);
 
-    /* title */
     draw_centered_text("Enter server details to connect", 160, 18, WHITE);
 
-    /* form panel */
     int pw = 420, ph = 280;
     int px = (SCREEN_WIDTH - pw) / 2, py = 210;
     draw_panel(px, py, pw, ph);
@@ -559,13 +526,11 @@ static void render_connect(client_t* c) {
     draw_label(lx, fy + gap * 2, 14, "PLAYER NAME", COL_TEXT_DIM);
     draw_input_field(&c->name_input, NULL);
 
-    /* connect button */
     Rectangle btn = {(float)px + 20, (float)(py + ph - 55), (float)(pw - 40),
                      38};
     bool hov = CheckCollisionPointRec(GetMousePosition(), btn);
     draw_btn(btn, "CONNECT", hov);
 
-    /* error */
     if (c->connect_error[0]) {
         int ew = MeasureText(c->connect_error, 16);
         DrawText(c->connect_error, (SCREEN_WIDTH - ew) / 2, py + ph + 10, 16,
@@ -573,8 +538,6 @@ static void render_connect(client_t* c) {
     }
 }
 
-/* ── Render: lobby screen ────────────────────────────────────────────────────
- */
 static void render_lobby(client_t* c) {
     DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COL_BG,
                            (Color){10, 10, 20, 255});
@@ -587,7 +550,6 @@ static void render_lobby(client_t* c) {
              c->my_id);
     draw_centered_text(sub, 100, 18, COL_TEXT_DIM);
 
-    /* player list panel */
     int pw = 500, ph = 360;
     int px = (SCREEN_WIDTH - pw) / 2, py = 140;
     draw_panel(px, py, pw, ph);
@@ -619,7 +581,6 @@ static void render_lobby(client_t* c) {
         row_y += row_h;
     }
 
-    /* buttons */
     int bw = 160, bh = 40, by = py + ph + 20;
     Rectangle ready_btn = {(float)(SCREEN_WIDTH / 2 - bw - 10), (float)by,
                            (float)bw, (float)bh};
@@ -632,8 +593,6 @@ static void render_lobby(client_t* c) {
              CheckCollisionPointRec(GetMousePosition(), ping_btn));
 }
 
-/* ── Render: game screen ─────────────────────────────────────────────────────
- */
 #define CELL_SIZE 36
 #define MAP_PAD_X 20
 #define MAP_PAD_Y 20
@@ -642,12 +601,10 @@ static void render_lobby(client_t* c) {
 static void render_game(client_t* c) {
     ClearBackground(COL_BG);
 
-    /* ── map ── */
     if (c->has_map) {
         int map_px_w = c->map.cols * CELL_SIZE;
         int map_px_h = c->map.rows * CELL_SIZE;
 
-        /* centre map in the left area */
         int avail_w = SCREEN_WIDTH - SIDEBAR_W - MAP_PAD_X * 2;
         int ox = MAP_PAD_X + (avail_w - map_px_w) / 2;
         int oy = (SCREEN_HEIGHT - map_px_h) / 2;
@@ -676,9 +633,7 @@ static void render_game(client_t* c) {
 
                 DrawRectangle(cx, cy, CELL_SIZE - 1, CELL_SIZE - 1, bg);
 
-                /* cell symbol */
                 if (ch == 'H') {
-                    /* wall – no text, just shade */
                     DrawRectangle(cx + 1, cy + 1, CELL_SIZE - 3, CELL_SIZE - 3,
                                   (Color){45, 45, 65, 255});
                 } else if (ch == 'S') {
@@ -696,7 +651,6 @@ static void render_game(client_t* c) {
             }
         }
 
-        /* draw players on top */
         for (int pid = 0; pid < MAX_PLAYERS; pid++) {
             gui_player_t* p = &c->players[pid];
             if (!p->active || !p->alive)
@@ -708,7 +662,6 @@ static void render_game(client_t* c) {
             Color pc = PLAYER_COLORS[pid];
             DrawCircle(cx + CELL_SIZE / 2, cy + CELL_SIZE / 2,
                        CELL_SIZE / 2 - 3, pc);
-            /* player number */
             char num[2] = {'1' + pid, '\0'};
             DrawText(num, cx + CELL_SIZE / 2 - 5, cy + CELL_SIZE / 2 - 9, 18,
                      pid == c->my_id ? COL_BTN_TEXT : WHITE);
@@ -722,7 +675,6 @@ static void render_game(client_t* c) {
                            COL_TEXT_DIM);
     }
 
-    /* ── sidebar ── */
     int sx = SCREEN_WIDTH - SIDEBAR_W;
     DrawRectangle(sx, 0, SIDEBAR_W, SCREEN_HEIGHT, COL_PANEL);
     DrawLine(sx, 0, sx, SCREEN_HEIGHT, COL_BORDER);
@@ -745,15 +697,12 @@ static void render_game(client_t* c) {
         ry += 44;
     }
 
-    /* controls hint */
     draw_label(sx + 16, SCREEN_HEIGHT - 130, 13, "WASD  move", COL_TEXT_DIM);
     draw_label(sx + 16, SCREEN_HEIGHT - 110, 13, "SPACE place bomb",
                COL_TEXT_DIM);
     draw_label(sx + 16, SCREEN_HEIGHT - 90, 13, "ESC   lobby", COL_TEXT_DIM);
 }
 
-/* ── Render: end-game screen ─────────────────────────────────────────────────
- */
 static void render_endgame(client_t* c) {
     DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COL_BG,
                            (Color){10, 10, 20, 255});
@@ -768,7 +717,6 @@ static void render_endgame(client_t* c) {
         draw_centered_text(buf, 80, 72, PLAYER_COLORS[c->winner_id % 8]);
     }
 
-    /* round stats */
     int pw = 520, ph = 60 + c->round_stats_count * 44 + 20;
     int px = (SCREEN_WIDTH - pw) / 2, py = 180;
     draw_panel(px, py, pw, ph);
@@ -790,7 +738,6 @@ static void render_endgame(client_t* c) {
         ry += 44;
     }
 
-    /* buttons */
     int by = py + ph + 30;
     Rectangle lobby_btn = {(float)(SCREEN_WIDTH / 2 - 170), (float)by, 160, 42};
     Rectangle quit_btn = {(float)(SCREEN_WIDTH / 2 + 10), (float)by, 160, 42};
@@ -801,8 +748,6 @@ static void render_endgame(client_t* c) {
              CheckCollisionPointRec(GetMousePosition(), quit_btn));
 }
 
-/* ── Render notification bar ─────────────────────────────────────────────────
- */
 static void render_notify(client_t* c) {
     if (GetTime() > c->notify_until)
         return;
@@ -818,8 +763,6 @@ static void render_notify(client_t* c) {
     DrawText(c->notify_msg, bx + 20, by + 9, 17, txt);
 }
 
-/* ── Update: connect screen ──────────────────────────────────────────────────
- */
 static void update_input_active(input_field_t* f) {
     if (!f->active)
         return;
@@ -929,7 +872,6 @@ static void update_connect(client_t* c) {
         }
     }
 
-    /* tab to cycle fields */
     if (IsKeyPressed(KEY_TAB)) {
         if (c->ip_input.active) {
             c->ip_input.active = false;
@@ -943,13 +885,34 @@ static void update_connect(client_t* c) {
         }
     }
 
+    if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_V)) {
+        input_field_t* active = NULL;
+        if (c->ip_input.active)
+            active = &c->ip_input;
+        else if (c->port_input.active)
+            active = &c->port_input;
+        else if (c->name_input.active)
+            active = &c->name_input;
+
+        if (active) {
+            char* clip = GetClipboardText();
+            if (clip) {
+                int clip_len = (int)strlen(clip);
+                int already_len = active->len;
+                if (already_len + clip_len < (int)sizeof(active->buf)) {
+                    strncpy(active->buf + already_len, clip, clip_len);
+                    active->len += clip_len;
+                    active->buf[active->len] = '\0';
+                }
+            }
+        }
+    }
+
     update_input_active(&c->ip_input);
     update_input_active(&c->port_input);
     update_input_active(&c->name_input);
 }
 
-/* ── Update: lobby screen ────────────────────────────────────────────────────
- */
 static void update_lobby(client_t* c) {
     int bw = 160, bh = 40;
     int pw = 500, ph = 360;
@@ -976,8 +939,6 @@ static void update_lobby(client_t* c) {
     }
 }
 
-/* ── Update: game screen ─────────────────────────────────────────────────────
- */
 static void update_game(client_t* c) {
     if (!c->connected)
         return;
@@ -1000,7 +961,6 @@ static void update_game(client_t* c) {
     }
 
     if (IsKeyPressed(KEY_ESCAPE)) {
-        /* go back to lobby */
         send_header(c->sockfd, MSG_LEAVE, c->my_id, TARGET_SERVER);
         close(c->sockfd);
         c->connected = false;
@@ -1009,8 +969,6 @@ static void update_game(client_t* c) {
     }
 }
 
-/* ── Update: end-game screen ─────────────────────────────────────────────────
- */
 static void update_endgame(client_t* c) {
     int pw = 520;
     int px = (SCREEN_WIDTH - pw) / 2, py = 180;
@@ -1032,8 +990,6 @@ static void update_endgame(client_t* c) {
     }
 }
 
-/* ── Main ────────────────────────────────────────────────────────────────────
- */
 int main(void) {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
@@ -1046,7 +1002,6 @@ int main(void) {
     c.winner_id = 255;
     c.sockfd = -1;
 
-    /* position input fields inside the panel */
     int pw = 420, ph = 280;
     int px = (SCREEN_WIDTH - pw) / 2, py = 210;
     int lx = px + 20, fw = pw - 40, fh = 34, fy = py + 46, gap = 75;
@@ -1061,7 +1016,6 @@ int main(void) {
     bg_texture = LoadTextureFromImage(bg_image);
 
     while (!WindowShouldClose()) {
-        /* ── poll for server messages (non-blocking) ── */
         if (c.connected && c.sockfd >= 0) {
             int ready = poll(&c.pfd, 1, 0);
             if (ready > 0 && (c.pfd.revents & POLLIN)) {
@@ -1076,7 +1030,6 @@ int main(void) {
             }
         }
 
-        /* ── update ── */
         switch (c.screen) {
             case SCREEN_CONNECT:
                 update_connect(&c);
@@ -1092,7 +1045,6 @@ int main(void) {
                 break;
         }
 
-        /* ── render ── */
         BeginDrawing();
         ClearBackground(COL_BG);
 
